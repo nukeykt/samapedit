@@ -115,7 +115,7 @@ GAMEEXEOBJS=$(GAME)\config.$o \
 	$(GAME)\kdmsound_stub.$o \
 	$(SRC)\$(ENGINELIB)
 
-EDITOREXEOBJS=$(GAME)\bstub.$o \
+EDITOREXEOBJS=$(GAME)\bstubken.$o \
 	$(GAME)\buildres.$(res) \
 	$(SRC)\$(EDITORLIB) \
 	$(SRC)\$(ENGINELIB)
