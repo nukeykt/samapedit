@@ -1,0 +1,3 @@
+[submodule "jfaudiolib"]
+	path = jfaudiolib
+	url = ../jfaudiolib.git
