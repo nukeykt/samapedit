@@ -14,6 +14,8 @@
 #include "osd.h"
 #include "cache1d.h"
 
+#include "music.h"
+
 
 static unsigned char tempbuf[256];
 
@@ -135,6 +137,8 @@ int ExtInit(void)
             free(supportdir);
         }
     }
+
+	MUSIC_Init(0, "");
 
 	initgroupfile("stuff.dat");
 	bpp = 8;
