@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "baselayer.h"
 #include "cache1d.h"
 #include "pragmas.h"
+#include "resource.h"
 
 void _SetErrorLoc(const char* pzFile, int nLine);
 void _ThrowError(const char* pzFormat, ...);
@@ -56,6 +57,12 @@ void __dassert(const char* pzExpr, const char* pzFile, int nLine);
 
 #define kMaxVoxels MAXVOXELS
 
+extern int gFrameClock;
+extern int gFrameTicks;
+extern int gFrame;
+extern int gFrameRate;
+extern int gGamma;
+extern Resource gSysRes;
 
 inline int ClipLow(int a, int b)
 {
@@ -69,6 +76,20 @@ inline int ClipHigh(int a, int b)
     if (a >= b)
         return b;
     return a;
+}
+
+inline int ClipRange(int a, int b, int c)
+{
+    if (a < b)
+        return b;
+    if (a > c)
+        return c;
+    return a;
+}
+
+inline int interpolate(int a, int b, int c)
+{
+    return a+mulscale16(b-a,c);
 }
 
 inline int approxDist(int dx, int dy)
