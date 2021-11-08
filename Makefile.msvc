@@ -119,6 +119,11 @@ GAMEEXEOBJS=$(GAME)\config.$o \
 	$(SRC)\$(ENGINELIB)
 
 EDITOREXEOBJS=$(GAME)\bstubken.$o \
+	$(GAME)\common.$o \
+	$(GAME)\qheap.$o \
+	$(GAME)\resource.$o \
+	$(GAME)\misc.$o \
+	$(GAME)\inifile.$o \
 	$(GAME)\buildres.$(res) \
 	$(SRC)\$(EDITORLIB) \
 	$(SRC)\$(ENGINELIB)
@@ -128,7 +133,7 @@ ENGINEOBJS=$(ENGINEOBJS) $(SRC)\a.$o
 !endif
 
 RENDERTYPE=WIN
-BUILDCFLAGS=/DRENDERTYPEWIN=1
+BUILDCFLAGS=/DRENDERTYPEWIN=1 /DUSE_QHEAP=1
 BUILDLIBS=user32.lib gdi32.lib shell32.lib ws2_32.lib comctl32.lib comdlg32.lib uxtheme.lib xinput9_1_0.lib
 
 !if $(USE_POLYMOST)
