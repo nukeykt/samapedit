@@ -116,7 +116,10 @@ typedef struct
 	signed char floorshade;
 	unsigned char floorpal, floorxpanning, floorypanning;
 	unsigned char visibility, filler;
-	short lotag, hitag, extra;
+	union {
+		short lotag, type;
+	};
+	short hitag, extra;
 } sectortype;
 
 //cstat:
@@ -140,7 +143,10 @@ typedef struct
 	short picnum, overpicnum;
 	signed char shade;
 	unsigned char pal, xrepeat, yrepeat, xpanning, ypanning;
-	short lotag, hitag, extra;
+	union {
+		short lotag, type;
+	};
+	short hitag, extra;
 } walltype;
 
 //cstat:
@@ -168,8 +174,21 @@ typedef struct
 	unsigned char xrepeat, yrepeat;
 	signed char xoffset, yoffset;
 	short sectnum, statnum;
-	short ang, owner, xvel, yvel, zvel;
-	short lotag, hitag, extra;
+	short ang, owner;
+	union {
+		short xvel, index;
+	};
+	short yvel;
+	union {
+		short zvel, inittype;
+	};
+	union {
+		short lotag, type;
+	};
+	union {
+		short hitag, flags;
+	};
+	short extra;
 } spritetype;
 
 	// 12 bytes
