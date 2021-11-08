@@ -92,6 +92,14 @@ inline int interpolate(int a, int b, int c)
     return a+mulscale16(b-a,c);
 }
 
+inline int dmulscale30r(int a, int b, int c, int d)
+{
+    int64_t acc = 1<<(30-1);
+    acc += ((int64_t)a) * b;
+    acc += ((int64_t)c) * d;
+    return (int)(acc>>30);
+}
+
 inline int approxDist(int dx, int dy)
 {
     dx = klabs(dx);
