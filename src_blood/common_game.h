@@ -57,6 +57,344 @@ void __dassert(const char* pzExpr, const char* pzFile, int nLine);
 
 #define kMaxVoxels MAXVOXELS
 
+// MEDIUM /////////////////////////////////////////////////////
+enum {
+kMediumNormal                   = 0,
+kMediumWater                    = 1,
+kMediumGoo                      = 2,
+};
+
+// STATNUMS /////////////////////////////////////////////////////
+enum {
+kStatNothing                    = -1,
+kStatDecoration                 = 0,
+kStatFX                         = 1,
+kStatExplosion                  = 2,
+kStatItem                       = 3,
+kStatThing                      = 4,
+kStatProjectile                 = 5,
+kStatDude                       = 6,
+kStatInactive                   = 7, // inactive (ambush) dudes
+kStatRespawn                    = 8,
+kStatPurge                      = 9,
+kStatMarker                     = 10,
+kStatTraps                      = 11,
+kStatAmbience                   = 12,
+kStatSpares                     = 13,
+kStatFlare                      = 14,
+kStatDebris                     = 15,
+kStatPathMarker                 = 16,
+kStatFree                       = 1024,
+};
+
+// POWERUPS /////////////////////////////////////////////////////
+enum {
+kPwUpFeatherFall        = 12,
+kPwUpShadowCloak        = 13,
+kPwUpDeathMask          = 14,
+kPwUpJumpBoots          = 15,
+kPwUpTwoGuns            = 17,
+kPwUpDivingSuit         = 18,
+kPwUpGasMask            = 19,
+kPwUpCrystalBall        = 21,
+kPwUpDoppleganger       = 23,
+kPwUpReflectShots       = 24,
+kPwUpBeastVision        = 25,
+kPwUpShadowCloakUseless = 26,
+kPwUpDeliriumShroom     = 28,
+kPwUpGrowShroom         = 29,
+kPwUpShrinkShroom       = 30,
+kPwUpDeathMaskUseless   = 31,
+kPwUpAsbestArmor        = 39,
+kMaxPowerUps            = 51,
+};
+
+enum {
+    kExplosionSmall = 0,
+    kExplosionStandard = 1,
+    kExplosionLarge = 2,
+    kExplosionFireball = 3,
+    kExplosionSpray = 4,
+    kExplosion5 = 5,
+    kExplosion6 = 6,
+    kExplosionNapalm = 7,
+    kExplosionMax = 8
+};
+
+// SPRITE TYPES /////////////////////////////////////////////////
+enum {
+    kSpriteDecoration = 0,
+
+    // markers
+    kMarkerSPStart = 1,
+    kMarkerMPStart = 2,
+    kMarkerOff = 3,
+    kMarkerOn = 4,
+    kMarkerAxis = 5,
+    kMarkerLowLink = 6,
+    kMarkerUpLink = 7,
+    kMarkerWarpDest = 8,
+    kMarkerUpWater = 9,
+    kMarkerLowWater = 10,
+    kMarkerUpStack = 11,
+    kMarkerLowStack = 12,
+    kMarkerUpGoo = 13,
+    kMarkerLowGoo = 14,
+    kMarkerPath = 15,
+    kMarkerDudeSpawn = 18,
+    kMarkerEarthQuake = 19,
+
+    // switches
+    kSwitchBase = 20,
+    kSwitchToggle = 20,
+    kSwitchOneWay = 21,
+    kSwitchCombo = 22,
+    kSwitchPadlock = 23,
+    kSwitchMax = 24,
+
+    // decorations
+    kDecorationTorch = 30,
+    kDecorationCandle = 32,
+
+    // (weapons)
+    kItemWeaponBase = 40,
+    kItemWeaponRandom = kItemWeaponBase,
+    kItemWeaponSawedoff = 41,
+    kItemWeaponTommygun = 42,
+    kItemWeaponFlarePistol = 43,
+    kItemWeaponVoodooDoll = 44,
+    kItemWeaponTeslaCannon = 45,
+    kItemWeaponNapalmLauncher = 46,
+    kItemWeaponPitchfork = 47,
+    kItemWeaponSprayCan = 48,
+    kItemWeaponTNT = 49,
+    kItemWeaponLifeLeech = 50,
+    kItemWeaponMax = 51,
+
+    // items (ammos)
+    kItemAmmoBase = 60,
+    kItemAmmoSprayCan = kItemAmmoBase,
+    kItemAmmoTNTBundle = 62,
+    kItemAmmoTNTBox = 63,
+    kItemAmmoProxBombBundle = 64,
+    kItemAmmoRemoteBombBundle = 65,
+    kItemAmmoTrappedSoul = 66,
+    kItemAmmoSawedoffFew = 67,
+    kItemAmmoSawedoffBox = 68,
+    kItemAmmoTommygunFew = 69,
+    kItemAmmoVoodooDoll = 70,
+    kItemAmmoTommygunDrum = 72,
+    kItemAmmoTeslaCharge = 73,
+    kItemAmmoFlares = 76,
+    kItemAmmoGasolineCan = 79,
+    kItemAmmoMax = 81,
+
+    kItemBase = 100,
+    
+    // items (keys)
+    kItemKeyBase = kItemBase,
+    kItemKeySkull = kItemKeyBase,
+    kItemKeyEye = 101,
+    kItemKeyFire = 102,
+    kItemKeyDagger = 103,
+    kItemKeySpider = 104,
+    kItemKeyMoon = 105,
+    kItemKeyKey7 = 106,
+    kItemKeyMax = 107,
+
+    // items (health)
+    kItemHealthDoctorBag = 107,
+    kItemHealthMedPouch = 108,
+    kItemHealthLifeEssense = 109,
+    kItemHealthLifeSeed = 110,
+    kItemHealthRedPotion = 111,
+
+    // items (misc)
+    kItemFeatherFall = 112,
+    kItemShadowCloak = 113, // ltdInvisibility
+    kItemDeathMask = 114, // invulnerability
+    kItemJumpBoots = 115,
+    kItemTwoGuns = 117,
+    kItemDivingSuit = 118,
+    kItemGasMask = 119,
+    kItemCrystalBall = 121,
+    kItemReflectShots = 124,
+    kItemBeastVision = 125,
+    kItemShroomDelirium = 128,
+
+    kItemArmorAsbest = 139,
+    kItemArmorBasic = 140,
+    kItemArmorBody = 141,
+    kItemArmorFire = 142,
+    kItemArmorSpirit = 143,
+    kItemArmorSuper = 144,
+
+    kItemFlagABase = 145,
+    kItemFlagBBase = 146,
+    kItemFlagA = 147,
+    kItemFlagB = 148,
+    kItemMax = 151,
+
+    // dudes
+    kDudeBase = 200,
+    kDudeCultistTommy = 201,
+    kDudeCultistShotgun = 202,
+    kDudeZombieAxeNormal = 203,
+    kDudeZombieButcher = 204,
+    kDudeZombieAxeBuried = 205,
+    kDudeGargoyleFlesh = 206,
+    kDudeGargoyleStone = 207,
+    kDudeGargoyleStatueFlesh = 208,
+    kDudeGargoyleStatueStone = 209,
+    kDudePhantasm = 210,
+    kDudeHellHound = 211,
+    kDudeHand = 212,
+    kDudeSpiderBrown = 213,
+    kDudeSpiderRed = 214,
+    kDudeSpiderBlack = 215,
+    kDudeSpiderMother = 216,
+    kDudeGillBeast = 217,
+    kDudeBoneEel = 218,
+    kDudeBat = 219,
+    kDudeRat = 220,
+    kDudePodGreen = 221,
+    kDudeTentacleGreen = 222,
+    kDudePodFire = 223,
+    kDudeTentacleFire = 224,
+    kDudePodMother = 225,
+    kDudeTentacleMother = 226,
+    kDudeCerberusTwoHead = 227,
+    kDudeCerberusOneHead = 228,
+    kDudeTchernobog = 229,
+    kDudeCultistTommyProne = 230,
+    kDudePlayer1 = 231,
+    kDudePlayer2 = 232,
+    kDudePlayer3 = 233,
+    kDudePlayer4 = 234,
+    kDudePlayer5 = 235,
+    kDudePlayer6 = 236,
+    kDudePlayer7 = 237,
+    kDudePlayer8 = 238,
+    kDudeBurningInnocent = 239,
+    kDudeBurningCultist = 240,
+    kDudeBurningZombieAxe = 241,
+    kDudeBurningZombieButcher = 242,
+    kDudeCultistReserved = 243, // unused
+    kDudeZombieAxeLaying = 244,
+    kDudeInnocent = 245,
+    kDudeCultistShotgunProne = 246,
+    kDudeCultistTesla = 247,
+    kDudeCultistTNT = 248,
+    kDudeCultistBeast = 249,
+    kDudeTinyCaleb = 250,
+    kDudeBeast = 251,
+    kDudeBurningTinyCaleb = 252,
+    kDudeBurningBeast = 253,
+    kDudeVanillaMax = 254,
+    kDudeMax = 256,
+    
+    kMissileBase = 300,
+    kMissileButcherKnife = kMissileBase,
+    kMissileFlareRegular = 301,
+    kMissileTeslaAlt = 302,
+    kMissileFlareAlt = 303,
+    kMissileFlameSpray = 304,
+    kMissileFireball = 305,
+    kMissileTeslaRegular = 306,
+    kMissileEctoSkull = 307,
+    kMissileFlameHound = 308,
+    kMissilePukeGreen = 309,
+    kMissileUnused = 310,
+    kMissileArcGargoyle = 311,
+    kMissileFireballNapalm = 312,
+    kMissileFireballCerberus = 313,
+    kMissileFireballTchernobog = 314,
+    kMissileLifeLeechRegular = 315,
+    kMissileLifeLeechAltNormal = 316,
+    kMissileLifeLeechAltSmall = 317,
+    kMissileMax = 318,
+
+    // things
+    kThingBase = 400,
+    kThingTNTBarrel = 400,
+    kThingArmedProxBomb = 401,
+    kThingArmedRemoteBomb = 402,
+    kThingCrateFace = 405,
+    kThingGlassWindow = 406,
+    kThingFluorescent = 407,
+    kThingWallCrack = 408,
+    kThingSpiderWeb = 410,
+    kThingMetalGrate = 411,
+    kThingFlammableTree = 412,
+    kTrapMachinegun = 413, // not really a thing, should be in traps instead
+    kThingFallingRock = 414,
+    kThingKickablePail = 415,
+    kThingObjectGib = 416,
+    kThingObjectExplode = 417,
+    kThingArmedTNTStick = 418,
+    kThingArmedTNTBundle = 419,
+    kThingArmedSpray = 420,
+    kThingBone = 421,
+    kThingDripWater = 423,
+    kThingDripBlood = 424,
+    kThingBloodBits = 425,
+    kThingBloodChunks = 426,
+    kThingZombieHead = 427,
+    kThingNapalmBall = 428,
+    kThingPodFireBall = 429,
+    kThingPodGreenBall = 430,
+    kThingDroppedLifeLeech = 431,
+    kThingVoodooHead = 432, // unused
+    kThingMax = 436,
+
+    // traps
+    kTrapFlame = 452,
+    kTrapSawCircular = 454,
+    kTrapZapSwitchable = 456,
+    kTrapExploder = 459,
+
+    // generators
+    kGenTrigger = 700,
+    kGenDripWater = 701,
+    kGenDripBlood = 702,
+    kGenMissileFireball = 703,
+    kGenMissileEctoSkull = 704,
+    kGenDart = 705,
+    kGenBubble = 706,
+    kGenBubbleMulti = 707,
+    
+    // sound sprites
+    kGenSound = 708,
+    kSoundSector = 709,
+    kSoundPlayer = 711,
+};
+
+// WALL TYPES /////////////////////////////////////////////////
+enum {
+    kWallBase = 500,
+    kWallStack = 501,
+    kWallGib = 511,
+    kWallMax = 512,
+};
+
+
+// SECTOR TYPES /////////////////////////////////////////////////
+enum {
+    kSectorBase = 600,
+    kSectorZMotion = 600,
+    kSectorZMotionSprite = 602,
+    kSectorTeleport = 604,
+    kSectorPath = 612,
+    kSectorRotateStep = 613,
+    kSectorSlideMarked = 614,
+    kSectorRotateMarked = 615,
+    kSectorSlide = 616,
+    kSectorRotate = 617,
+    kSectorDamage = 618,
+    kSectorCounter = 619,
+    kSectorMax = 620,
+};
+
 extern int gFrameClock;
 extern int gFrameTicks;
 extern int gFrame;

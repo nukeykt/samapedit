@@ -121,6 +121,9 @@ GAMEEXEOBJS=$(GAME)\config.$o \
 EDITOREXEOBJS=$(GAME)\bstubken.$o \
 	$(GAME)\common.$o \
 	$(GAME)\screen.$o \
+	$(GAME)\trig.$o \
+	$(GAME)\iob.$o \
+	$(GAME)\db.$o \
 	$(GAME)\qheap.$o \
 	$(GAME)\resource.$o \
 	$(GAME)\misc.$o \
