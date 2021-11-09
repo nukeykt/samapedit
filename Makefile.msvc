@@ -133,6 +133,7 @@ EDITOREXEOBJS=$(GAME)\bstubken.$o \
 	$(GAME)\inifile.$o \
 	$(GAME)\gfx.$o \
 	$(GAME)\gui.$o \
+	$(GAME)\tracker.$o \
 	$(GAME)\buildres.$(res) \
 	$(SRC)\$(EDITORLIB) \
 	$(SRC)\$(ENGINELIB)
