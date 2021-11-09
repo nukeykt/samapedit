@@ -409,7 +409,7 @@ extern int gFrameTicks;
 extern int gFrame;
 extern int gFrameRate;
 extern int gGamma;
-extern Resource gSysRes;
+extern Resource gSysRes, gSoundRes;
 
 struct PICANM {
     unsigned int animframes : 5;
@@ -429,6 +429,26 @@ struct POINT2D {
 struct POINT3D {
     int x, y, z;
 };
+
+inline int IncBy(int a, int b)
+{
+    a += b;
+    int q = a % b;
+    a -= q;
+    if (q < 0)
+        a -= b;
+    return a;
+}
+
+inline int DecBy(int a, int b)
+{
+    a--;
+    int q = a % b;
+    a -= q;
+    if (q < 0)
+        a -= b;
+    return a;
+}
 
 inline int ClipLow(int a, int b)
 {

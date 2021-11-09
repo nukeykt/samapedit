@@ -32,7 +32,7 @@ int gFrame;
 int gFrameRate;
 int gGamma;
 
-Resource gSysRes;
+Resource gSysRes, gSoundRes;
 
 static const char *_module;
 static int _line;
