@@ -57,7 +57,13 @@ void __dassert(const char* pzExpr, const char* pzFile, int nLine);
 
 #define kMaxVoxels MAXVOXELS
 
-extern "C" unsigned char picsiz[MAXTILES];
+extern "C" {
+unsigned char picsiz[MAXTILES];
+#define MAXVOXMIPS 5
+intptr_t voxoff[MAXVOXELS][MAXVOXMIPS];
+int vplce[4], vince[4];
+intptr_t palookupoffse[4], bufplce[4];
+}
 
 // MEDIUM /////////////////////////////////////////////////////
 enum {
@@ -404,6 +410,17 @@ extern int gFrameRate;
 extern int gGamma;
 extern Resource gSysRes;
 
+struct PICANM {
+    unsigned int animframes : 5;
+    unsigned int at0_5 : 1;
+    unsigned int animtype : 2;
+    signed int xoffset : 8;
+    signed int yoffset : 8;
+    unsigned int animspeed : 4;
+    unsigned int at3_4 : 3; // type
+    unsigned int at3_7 : 1; // filler
+};
+
 inline int ClipLow(int a, int b)
 {
     if (a < b)
@@ -430,6 +447,21 @@ inline int ClipRange(int a, int b, int c)
 inline int interpolate(int a, int b, int c)
 {
     return a+mulscale16(b-a,c);
+}
+
+inline void SetBitString(unsigned char *pArray, int nIndex)
+{
+    pArray[nIndex>>3] |= 1<<(nIndex&7);
+}
+
+inline void ClearBitString(unsigned char *pArray, int nIndex)
+{
+    pArray[nIndex >> 3] &= ~(1 << (nIndex & 7));
+}
+
+inline char TestBitString(unsigned char *pArray, int nIndex)
+{
+    return pArray[nIndex>>3] & (1<<(nIndex&7));
 }
 
 inline int dmulscale30r(int a, int b, int c, int d)

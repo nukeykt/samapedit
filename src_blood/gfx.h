@@ -65,6 +65,9 @@ struct QFONT
 
 extern int gColor;
 
+void Video_HLine(int page, int y, int x0, int x1);
+void Video_VLine(int page, int x, int y0, int y1);
+void Video_FillBox(int page, int x0, int y0, int x1, int y1);
 void Video_BlitM2V(char* src, int bpl, int width, int height, int page, int x, int y);
 void Video_BlitMT2V(char* src, char tc, int bpl, int width, int height, int page, int x, int y);
 

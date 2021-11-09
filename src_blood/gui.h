@@ -231,6 +231,10 @@ public:
 MODAL_RESULT ShowModal(Container* container);
 int GetNumberBox(const char* a1, int a2, int a3);
 
+char IsBlinkOn(void);
+void UpdateBlinkClock(int n);
+void SetBlinkOn(void);
+
 inline void MouseClamp(void)
 {
 	if (mousex < 0)
