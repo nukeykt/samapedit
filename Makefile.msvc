@@ -124,6 +124,7 @@ EDITOREXEOBJS=$(GAME)\bstubken.$o \
 	$(GAME)\trig.$o \
 	$(GAME)\iob.$o \
 	$(GAME)\db.$o \
+	$(GAME)\sectorfx.$o \
 	$(GAME)\qheap.$o \
 	$(GAME)\resource.$o \
 	$(GAME)\misc.$o \

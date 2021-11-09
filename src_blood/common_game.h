@@ -57,6 +57,8 @@ void __dassert(const char* pzExpr, const char* pzFile, int nLine);
 
 #define kMaxVoxels MAXVOXELS
 
+extern "C" unsigned char picsiz[MAXTILES];
+
 // MEDIUM /////////////////////////////////////////////////////
 enum {
 kMediumNormal                   = 0,
