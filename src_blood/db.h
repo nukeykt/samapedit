@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //-------------------------------------------------------------------------
 #pragma once
 
+#include "common_game.h"
+
 #define kMaxXSprites 16384
 #define kMaxXWalls 512
 #define kMaxXSectors 512
@@ -323,8 +325,9 @@ template<typename T> void GetSpriteExtents(T const * const pSprite, int *top, in
     *top = *bottom = pSprite->z;
     if ((pSprite->cstat & 0x30) != 0x20)
     {
-        int height = tilesiz[pSprite->picnum].y;
-        int center = height / 2 + picanm[pSprite->picnum].yofs;
+        int height = tilesizy[pSprite->picnum];
+        PICANM* _picanm = (PICANM*)picanm;
+        int center = height / 2 + _picanm[pSprite->picnum].yoffset;
         *top -= (pSprite->yrepeat << 2)*center;
         *bottom += (pSprite->yrepeat << 2)*(height - center);
     }
