@@ -7320,6 +7320,26 @@ void ExtCheckKeys()
     }
 }
 
+extern "C" unsigned char textfont[];
+
+void LoadFontSymbols(void)
+{
+    unsigned char CheckBox[2][8] = {
+        { 0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF },
+        { 0xFF, 0xC3, 0xA5, 0x99, 0x99, 0xA5, 0xC3, 0xFF }
+    };
+    unsigned char RadioButton[2][8] = {
+        { 0x3C, 0x42, 0x81, 0x81, 0x81, 0x81, 0x42, 0x3C },
+        { 0x3C, 0x42, 0x99, 0xBD, 0xBD, 0x99, 0x42, 0x3C }
+    };
+
+    Bmemcpy(&textfont[2*8], CheckBox[0], 8);
+    Bmemcpy(&textfont[3*8], CheckBox[1], 8);
+    Bmemcpy(&textfont[4*8], RadioButton[0], 8);
+    Bmemcpy(&textfont[5*8], RadioButton[1], 8);
+}
+
+
 #define NUMOPTIONS 9
 extern "C" unsigned char option[NUMOPTIONS] = {0,0,0,0,0,0,1,0,0};
 extern "C" int keys[NUMBUILDKEYS] =
@@ -7340,6 +7360,7 @@ int ExtInit()
     getlinehighlight_replace = qgetlinehighlight;
     getpointhighlight_replace = qgetpointhighlight;
     draw2dscreen_replace = qdraw2dscreen;
+    LoadFontSymbols();
 
     buildprintf("Initializing heap and resource system\n");
     Resource::heap = new QHeap(128 * 1024 * 1024);
