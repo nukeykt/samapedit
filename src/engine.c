@@ -38,7 +38,7 @@
 void *kmalloc(bsize_t size) { return(Bmalloc(size)); }
 void kfree(void *buffer) { Bfree(buffer); }
 
-void loadvoxel(int voxindex) { voxindex=0; }
+void loadvoxel(int voxindex) { if (loadvoxel_replace) loadvoxel_replace(voxindex); }
 int tiletovox[MAXTILES];
 int usevoxels = 1;
 #define kloadvoxel loadvoxel
@@ -580,6 +580,8 @@ unsigned char palfadedelta = 0;
 //
 static inline int getpalookup(int davis, int dashade)
 {
+	if (getpalookup_replace)
+		return getpalookup_replace(davis, dashade);
 	return(min(max(dashade+(davis>>8),0),numpalookups-1));
 }
 
@@ -1083,6 +1085,9 @@ static void prepwall(int z, walltype *wal)
 int animateoffs(short tilenum, short fakevar)
 {
 	int i, k, offs;
+
+	if (animateoffs_replace)
+		return animateoffs_replace(tilenum, fakevar);
 
 	offs = 0;
 	i = (totalclocklock>>((picanm[tilenum]>>24)&15));
@@ -4969,6 +4974,12 @@ static int loadpalette(void)
 {
 	int fil = -1, flen, i;
 
+	if (loadpalette_replace)
+	{
+		loadpalette_replace();
+		return 0;
+	}
+
 	if ((fil = kopen4load("palette.dat",0)) < 0) goto badpalette;
 	flen = kfilelength(fil);
 
@@ -5500,6 +5511,11 @@ void uninitengine(void)
 void initspritelists(void)
 {
 	int i;
+	if (initspritelists_replace)
+	{
+		initspritelists_replace();
+		return;
+	}
 
 	for (i=0;i<MAXSECTORS;i++)     //Init doubly-linked sprite sector lists
 		headspritesect[i] = -1;
@@ -6172,6 +6188,11 @@ int loadboard(char *filename, char fromwhere, int *daposx, int *daposy, int *dap
 			 short *daang, short *dacursectnum)
 {
 	short fil, i, numsprites;
+
+	if (loadboard_replace)
+	{
+		return loadboard_replace(filename, fromwhere, daposx, daposy, daposz, daang, dacursectnum);
+	}
 
 	i = strlen(filename)-1;
 	if ((unsigned char)filename[i] == 255) { filename[i] = 0; fromwhere = 1; }	// JBF 20040119: "compatibility"
@@ -7322,6 +7343,9 @@ int saveboard(char *filename, int *daposx, int *daposy, int *daposz,
 	walltype   twall;
 	spritetype tspri;
 
+	if (saveboard_replace)
+		return saveboard_replace(filename, daposx, daposy, daposz, daang, dacursectnum);
+
 	if ((fil = Bopen(filename,BO_BINARY|BO_TRUNC|BO_CREAT|BO_WRONLY,BS_IREAD|BS_IWRITE)) == -1)
 		return(-1);
 
@@ -8167,6 +8191,10 @@ int setspritez(short spritenum, int newx, int newy, int newz)
 //
 int insertsprite(short sectnum, short statnum)
 {
+	if (insertsprite_replace)
+	{
+		return insertsprite_replace(sectnum, statnum);
+	}
 	insertspritestat(statnum);
 	return(insertspritesect(sectnum));
 }
@@ -8177,6 +8205,10 @@ int insertsprite(short sectnum, short statnum)
 //
 int deletesprite(short spritenum)
 {
+	if (deletesprite_replace)
+	{
+		return deletesprite_replace(spritenum);
+	}
 	deletespritestat(spritenum);
 	return(deletespritesect(spritenum));
 }
@@ -8187,6 +8219,10 @@ int deletesprite(short spritenum)
 //
 int changespritesect(short spritenum, short newsectnum)
 {
+	if (changespritesect_replace)
+	{
+		return changespritesect_replace(spritenum, newsectnum);
+	}
 	if ((newsectnum < 0) || (newsectnum > MAXSECTORS)) return(-1);
 	if (sprite[spritenum].sectnum == newsectnum) return(0);
 	if (sprite[spritenum].sectnum == MAXSECTORS) return(-1);
@@ -8201,6 +8237,10 @@ int changespritesect(short spritenum, short newsectnum)
 //
 int changespritestat(short spritenum, short newstatnum)
 {
+	if (changespritestat_replace)
+	{
+		return changespritestat_replace(spritenum, newstatnum);
+	}
 	if ((newstatnum < 0) || (newstatnum > MAXSTATUS)) return(-1);
 	if (sprite[spritenum].statnum == newstatnum) return(0);
 	if (sprite[spritenum].statnum == MAXSTATUS) return(-1);
@@ -9840,6 +9880,27 @@ void setbrightness(int dabrightness, unsigned char *dapal, char noapply)
 		curpalettefaded[i].f = tempbuf[k++] = 0;
 	}
 
+	if (setbrightness_replace)
+	{
+		unsigned char _dapal[768], _dapalgamma[768];
+		setbrightness_replace(_dapal, _dapalgamma);
+		for(k=i=0;i<256;i++)
+		{
+			// save palette without any brightness adjustment
+			curpalette[i].r = _dapal[i*3+0];
+			curpalette[i].g = _dapal[i*3+1];
+			curpalette[i].b = _dapal[i*3+2];
+			curpalette[i].f = 0;
+
+			// brightness adjust the palette
+			curpalettefaded[i].b = (tempbuf[k++] = _dapalgamma[i*3+2]);
+			curpalettefaded[i].g = (tempbuf[k++] = _dapalgamma[i*3+1]);
+			curpalettefaded[i].r = (tempbuf[k++] = _dapalgamma[i*3+0]);
+			curpalettefaded[i].f = tempbuf[k++] = 0;
+		}
+	}
+
+
 	if ((noapply&1) == 0) setpalette(0,256,(unsigned char*)tempbuf);
 
 #if USE_POLYMOST && USE_OPENGL
@@ -10829,6 +10890,12 @@ void draw2dscreen(int posxe, int posye, short ange, int zoome, short gride)
 	int i, j, k, xp1, yp1, xp2, yp2, tempy;
 	intptr_t templong;
 	unsigned char col, mask;
+
+	if (draw2dscreen_replace)
+	{
+		draw2dscreen_replace(posxe, posye, ange, zoome, gride);
+		return;
+	}
 
 	if (qsetmode == 200) return;
 

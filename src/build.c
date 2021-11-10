@@ -120,6 +120,9 @@ static unsigned char scantoascwithshift[128] =
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
+int (*getpointhighlight_replace)(int xplc, int yplc);
+int (*getlinehighlight_replace)(int xplc, int yplc);
+
 
 
 unsigned char changechar(unsigned char dachar, int dadir, unsigned char smooshyalign, unsigned char boundcheck);
@@ -5608,6 +5611,9 @@ int getlinehighlight(int xplc, int yplc)
 {
 	int i, dst, dist, closest, x1, y1, x2, y2, nx, ny;
 
+	if (getlinehighlight_replace)
+		return getlinehighlight_replace(xplc, yplc);
+
 	if (numwalls == 0)
 		return(-1);
 	dist = 0x7fffffff;
@@ -5636,6 +5642,9 @@ int getlinehighlight(int xplc, int yplc)
 int getpointhighlight(int xplc, int yplc)
 {
 	int i, dst, dist, closest;
+
+	if (getpointhighlight_replace)
+		return getpointhighlight_replace(xplc, yplc);
 
 	if (numwalls == 0)
 		return(-1);

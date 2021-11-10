@@ -399,6 +399,20 @@ OTHER VARIABLES:
 			you call the loadboard function.
 ***************************************************************************/
 
+EXTERN int(*animateoffs_replace)(short tilenum, short fakevar);
+EXTERN void(*loadpalette_replace)(void);
+EXTERN int(*getpalookup_replace)(int davis, int dashade);
+EXTERN void(*setbrightness_replace)(unsigned char *dapal, unsigned char *dapalgamma);
+EXTERN void(*initspritelists_replace)(void);
+EXTERN int(*insertsprite_replace)(short sectnum, short statnum);
+EXTERN int(*deletesprite_replace)(short spritenum);
+EXTERN int(*changespritesect_replace)(short spritenum, short newsectnum);
+EXTERN int(*changespritestat_replace)(short spritenum, short newstatnum);
+EXTERN int(*loadboard_replace)(char *filename, char fromwhere, int *daposx, int *daposy, int *daposz, short *daang, short *dacursectnum);
+EXTERN int(*saveboard_replace)(char *filename, int *daposx, int *daposy, int *daposz, short *daang, short *dacursectnum);
+EXTERN void(*loadvoxel_replace)(int voxindex);
+EXTERN void(*draw2dscreen_replace)(int posxe, int posye, short ange, int zoome, short gride);
+
 int    preinitengine(void);	// a partial setup of the engine used for launch windows
 int    initengine(void);
 void   uninitengine(void);

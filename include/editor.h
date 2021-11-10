@@ -31,6 +31,9 @@ extern int buildkeys[NUMBUILDKEYS];
 
 extern int ydim16, halfxdim16, midydim16, xdimgame, ydimgame, bppgame, xdim2d, ydim2d, forcesetup;
 
+extern int (*getpointhighlight_replace)(int xplc, int yplc);
+extern int (*getlinehighlight_replace)(int xplc, int yplc);
+
 struct startwin_settings {
     int fullscreen;
     int xdim2d, ydim2d;
