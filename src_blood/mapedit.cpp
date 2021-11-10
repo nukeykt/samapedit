@@ -2288,7 +2288,7 @@ void sub_22350()
     int x = 0x4000;
     int y = divscale(searchx-xdim/2, xdim/2, 14);
     RotateVector(&x, &y, ang);
-    hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &nHitSect, &nHitWall, &nHitSprite, &hx, &hy, &hz, 0);
+    hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &nHitSect, &nHitWall, &nHitSprite, &hx, &hy, &hz, 0);
     if (nHitWall == searchwall)
         searchsector = wall[searchwall].nextsector;
     else if (searchwall == wall[nHitSect].nextwall)
@@ -5120,7 +5120,7 @@ void Check3DKeys(void)
                 short hitsect, hitwall, hitsprite;
                 int hitx, hity, hitz;
                 hitsect = hitwall = hitsprite = -1;
-                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
                 if (hitwall == searchwall)
                 {
                     if (hitsect < 0)
@@ -5161,7 +5161,7 @@ void Check3DKeys(void)
                 short hitsect, hitwall, hitsprite;
                 int hitx, hity, hitz;
                 hitsect = hitwall = hitsprite = -1;
-                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
                 if (hitsect < 0)
                 {
                     Beep();
@@ -5200,7 +5200,7 @@ void Check3DKeys(void)
                 short hitsect, hitwall, hitsprite;
                 int hitx, hity, hitz;
                 hitsect = hitwall = hitsprite = -1;
-                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
                 if (hitwall == searchwall)
                 {
                     int v64;
@@ -5257,7 +5257,7 @@ void Check3DKeys(void)
                 short hitsect, hitwall, hitsprite;
                 int hitx, hity, hitz;
                 hitsect = hitwall = hitsprite = -1;
-                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
                 if (hitsect < 0)
                 {
                     Beep();
