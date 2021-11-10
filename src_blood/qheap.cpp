@@ -39,7 +39,7 @@ void InstallFenceposts(HEAPNODE *n)
 
 void CheckFenceposts(HEAPNODE *n)
 {
-    char *data = (char*)n + 0x20;
+    unsigned char *data = (unsigned char*)n + 0x20;
     for (int i = 0; i < 0x10; i++)
     {
         if (data[i] != 0xcc)
@@ -47,7 +47,7 @@ void CheckFenceposts(HEAPNODE *n)
             ThrowError("Block underwritten");
         }
     }
-    data = (char*)n + n->size - 0x10;
+    data = (unsigned char*)n + n->size - 0x10;
     for (int i = 0; i < 0x10; i++)
     {
         if (data[i] != 0xcc)
