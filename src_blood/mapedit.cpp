@@ -12,6 +12,7 @@
 #include "screen.h"
 #include "sectorfx.h"
 #include "gameutil.h"
+#include "inifile.h"
 
 ///////// globals ///////////////
 
@@ -32,6 +33,7 @@ char gTempBuf[256];
 int gGrid = 4;
 int gZoom = 0x300;
 int gHighlightThreshold;
+int gStairHeight;
 
 short sectorhighlight;
 
@@ -39,6 +41,8 @@ unsigned char byte_CBA0C = 1;
 
 unsigned char gBeep;
 unsigned char gOldKeyMapping;
+int gCorrectedSprites;
+int gAutoSaveInterval;
 
 const char* dword_D9A88[2];
 const char* dword_D9A90[1024];
@@ -393,7 +397,7 @@ int ControlKeys(CONTROL* list)
     {
         ControlPrint(control, 1);
         unsigned char key;
-        while ((key == keyGetScan()) == 0) { }
+        while ((key = keyGetScan()) == 0) { }
         if (control->at1d)
         {
             key = control->at1d(control, key);
@@ -2433,31 +2437,31 @@ int InsertHazard(int a1, int a2, int a3, int a4, int a5, int a6)
     switch (vc)
     {
     case 655:
-        vc = 454;
+        type = 454;
         break;
     case 3444:
-        vc = 401;
+        type = 401;
         break;
     case 907:
-        vc = 400;
+        type = 400;
         break;
     case 968:
-        vc = 450;
+        type = 450;
         break;
     case 1080:
-        vc = 457;
+        type = 457;
         break;
     case 835:
-        vc = 458;
+        type = 458;
         break;
     case 1156:
-        vc = 456;
+        type = 456;
         break;
     case 2178:
-        vc = 413;
+        type = 413;
         break;
     case 908:
-        vc = 459;
+        type = 459;
         break;
     default:
         scrSetMessage("Invalid hazard tile selected!");
@@ -5996,4 +6000,1363 @@ void Check3DKeys(void)
     }
     if (key)
         keyFlushScans();
+}
+
+//////////////// bstub /////////////////
+
+
+
+IniFile gMapEditIni("MAPEDIT.INI");
+
+struct TextStruct {
+    short id;
+    const char* text;
+};
+
+TextStruct stru_CA9BC[] = {
+    { 0, "Off" },
+    { 1, "On" },
+};
+
+TextStruct stru_CA9C8[] = {
+    { 0, "Decoration" },
+    { 1, "Player Start" },
+    { 2, "Bloodbath Start" },
+    { 3, "Off marker" },
+    { 4, "On marker" },
+    { 5, "Axis marker" },
+
+    { 6, "Lower link" },
+    { 7, "Upper link" },
+    { 8, "Teleport target" },
+    { 10, "Lower water" },
+    { 9, "Upper water" },
+    { 12, "Lower stack" },
+    { 11, "Upper stack" },
+    { 14, "Lower goo" },
+    { 13, "Upper goo" },
+    { 15, "Path marker" },
+    { 16, "Alignable Region" },
+    { 17, "Base Region" },
+    { 18, "Dude Spawn" },
+    { 19, "Earthquake" },
+
+    { 20, "Toggle switch" },
+    { 21, "1-Way switch" },
+    { 22, "Combination switch" },
+    { 23, "Padlock (1-shot)" },
+
+    { 30, "Torch" },
+    { 32, "Candle" },
+
+    { 40, gWeaponText[0] },
+    { 47, gWeaponText[7] },
+    { 43, gWeaponText[3] },
+    { 41, gWeaponText[1] },
+    { 42, gWeaponText[2] },
+    { 46, gWeaponText[6] },
+    { 49, gWeaponText[9] },
+    { 48, gWeaponText[8] },
+    { 45, gWeaponText[5] },
+    { 50, gWeaponText[10] },
+    { 44, gWeaponText[4] },
+
+    { 60, gAmmoText[0] },
+    { 62, gAmmoText[2] },
+    { 63, gAmmoText[3] },
+    { 64, gAmmoText[4] },
+    { 65, gAmmoText[5] },
+    { 67, gAmmoText[7] },
+    { 68, gAmmoText[8] },
+    { 69, gAmmoText[9] },
+    { 70, gAmmoText[10] },
+    { 72, gAmmoText[12] },
+    { 73, gAmmoText[13] },
+    { 76, gAmmoText[16] },
+    { 79, gAmmoText[19] },
+    { 66, gAmmoText[6] },
+    { 80, "Random Ammo" },
+
+    { 100, gItemText[0] },
+    { 101, gItemText[1] },
+    { 102, gItemText[2] },
+    { 103, gItemText[3] },
+    { 104, gItemText[4] },
+    { 105, gItemText[5] },
+    { 106, gItemText[6] },
+    { 107, gItemText[7] },
+    { 108, gItemText[8] },
+    { 109, gItemText[9] },
+    { 110, gItemText[10] },
+    { 111, gItemText[11] },
+    { 112, gItemText[12] },
+    { 113, gItemText[13] },
+    { 114, gItemText[14] },
+    { 115, gItemText[15] },
+    { 116, gItemText[16] },
+    { 117, gItemText[17] },
+    { 118, gItemText[18] },
+    { 119, gItemText[19] },
+    { 120, gItemText[20] },
+    { 121, gItemText[21] },
+    { 122, gItemText[22] },
+    { 123, gItemText[23] },
+    { 124, gItemText[24] },
+    { 125, gItemText[25] },
+    { 126, gItemText[26] },
+    { 127, gItemText[27] },
+    { 128, gItemText[28] },
+    { 129, gItemText[29] },
+    { 130, gItemText[30] },
+    { 131, gItemText[31] },
+    { 132, gItemText[32] },
+    { 133, gItemText[33] },
+    { 134, gItemText[34] },
+    { 135, gItemText[35] },
+    { 136, gItemText[36] },
+    { 137, gItemText[37] },
+    { 138, gItemText[38] },
+    { 139, gItemText[39] },
+    { 140, gItemText[40] },
+    { 141, gItemText[41] },
+    { 142, gItemText[42] },
+    { 143, gItemText[43] },
+    { 144, gItemText[44] },
+    { 145, gItemText[45] },
+    { 146, gItemText[46] },
+
+    { 201, "Cultist w/Tommy" },
+    { 202, "Cultist w/Shotgun" },
+    { 247, "Cultist w/Tesla" },
+    { 248, "Cultist w/Dynamite" },
+    { 249, "Beast Cultist" },
+    { 250, "Tiny Caleb" },
+    { 251, "Beast" },
+    { 203, "Axe Zombie" },
+    { 204, "Fat Zombie" },
+    { 205, "Earth Zombie" },
+    { 244, "Sleep Zombie" },
+    { 245, "Innocent" },
+    { 206, "Flesh Gargoyle" },
+    { 207, "Stone Gargoyle" },
+    { 208, "Flesh Statue" },
+    { 209, "Stone Statue" },
+    { 210, "Phantasm" },
+    { 211, "Hound" },
+    { 212, "Hand" },
+    { 213, "Brown Spider" },
+    { 214, "Red Spider" },
+    { 216, "Mother Spider" },
+    { 215, "Black Spider" },
+    { 217, "GillBeast" },
+    { 218, "Eel" },
+    { 219, "Bat" },
+    { 220, "Rat" },
+    { 221, "Green Pod" },
+    { 222, "Green Tentacle" },
+    { 223, "Fire Pod" },
+    { 224, "Fire Tentacle" },
+    { 227, "Cerberus" },
+    { 229, "Tchernobog" },
+    { 230, "TCultist prone" },
+    { 246, "SCultist prone" },
+
+    { 400, "TNT Barrel" },
+    { 401, "Armed Prox Bomb" },
+    { 402, "Armed Remote" },
+    { 403, "Blue Vase" },
+    { 404, "Brown Vase" },
+    { 405, "Crate Face" },
+    { 406, "Glass Window" },
+    { 407, "Fluorescent Light" },
+    { 408, "Wall Crack" },
+    { 409, "Wood Beam" },
+    { 410, "Spider's Web" },
+    { 411, "MetalGrate1" },
+    { 412, "FlammableTree" },
+    { 413, "Machine Gun" },
+    { 414, "Falling Rock" },
+    { 415, "Kickable Pail" },
+    { 416, "Gib Object" },
+    { 417, "Explode Object" },
+    { 427, "Zombie Head" },
+
+    { 450, "Spike Trap" },
+    { 451, "Rock Trap" },
+    { 452, "Flame Trap" },
+    { 454, "Saw Blade" },
+    { 455, "Electric Zap" },
+    { 456, "Switched Zap" },
+    { 457, "Pendulum" },
+    { 458, "Guillotine" },
+    { 459, "Hidden Exploder" },
+
+    { 700, "Trigger Gen" },
+    { 701, "WaterDrip Gen" },
+    { 702, "BloodDrip Gen" },
+    { 703, "Fireball Gen" },
+    { 704, "EctoSkull Gen" },
+    { 705, "Dart Gen" },
+    { 706, "Bubble Gen" },
+    { 707, "Multi-Bubble Gen" },
+    { 708, "SFX Gen" },
+    { 709, "Sector SFX" },
+    { 710, "Ambient SFX" },
+    { 711, "Player SFX" },
+};
+
+TextStruct stru_CADDC[] = {
+    { 0, "Normal" },
+    { 20, "Toggle switch" },
+    { 21, "1-Way switch" },
+    { 500, "Wall Link" },
+    { 501, "Wall Stack (unsupp.)" },
+    { 511, "Gib Wall" },
+};
+
+TextStruct stru_CAE00[] = {
+    { 0, "Normal" },
+    { 600, "Z Motion" },
+    { 602, "Z Motion SPRITE" },
+    { 603, "Warp" },
+    { 604, "Teleporter" },
+    { 614, "Slide Marked" },
+    { 615, "Rotate Marked" },
+    { 616, "Slide" },
+    { 617, "Rotate" },
+    { 613, "Step Rotate" },
+    { 612, "Path Sector" },
+    { 618, "Damage Sector" },
+    { 619, "Counter Sector" },
+};
+
+TextStruct stru_CAE50[] = {
+    { 1, "Linear" },
+    { 0, "Sine" },
+    { 2, "SlowOff"},
+    { 3, "SlowOn"},
+};
+
+TextStruct stru_CAE68[] = {
+    { 0, "None" },
+    { 1, "Square" },
+    { 2, "Saw" },
+    { 3, "Ramp up" },
+    { 4, "Ramp down" },
+    { 5, "Sine" },
+    { 6, "Flicker1" },
+    { 7, "Flicker2" },
+    { 8, "Flicker3" },
+    { 9, "Flicker4" },
+    { 10, "Strobe" },
+    { 11, "Search" },
+};
+
+TextStruct stru_CAEB0[] = {
+    { 0, "OFF" },
+    { 1, "ON" },
+    { 2, "State" },
+    { 3, "Toggle" },
+    { 4, "!State" },
+    { 5, "Link" },
+    { 6, "Lock" },
+    { 7, "Unlock" },
+    { 8, "Toggle Lock" },
+    { 9, "Stop OFF" },
+    { 10, "Stop ON" },
+    { 11, "Stop Next" },
+};
+
+TextStruct stru_CAEF8[] = {
+    { 0, "Optional" },
+    { 1, "Never" },
+    { 2, "Always" },
+    { 3, "Permanent" },
+};
+
+void Sleep(int n)
+{
+    int t = n + totalclock;
+    while (totalclock < t) {};
+}
+
+void ModifyBeep(void)
+{
+#if 0
+    if (gBeep)
+    {
+        sound(6000);
+        Sleep(2);
+        nosound();
+        Sleep(2);
+    }
+#endif
+    asksave = 1;
+}
+
+void Beep(void)
+{
+#if 0
+    sound(1000);
+    Sleep(4);
+    sound(800);
+    Sleep(4);
+    nosound();
+#endif
+}
+
+void FillList(const char** a1, TextStruct* a2, int a3)
+{
+    for (int i = 0; i < a3; i++)
+    {
+        a1[a2[i].id] = a2[i].text;
+    }
+}
+
+void FillStringLists(void)
+{
+    FillList(dword_D9A88, stru_CA9BC, 2);
+    FillList(dword_D9A90, stru_CA9C8, 174);
+    FillList(dword_DAA90, stru_CADDC, 6);
+    FillList(dword_DBA90, stru_CAE00, 13);
+    FillList(WaveForm2, stru_CAE50, 4);
+    FillList(WaveForm, stru_CAE68, 12);
+    FillList(dword_DCB00, stru_CAEB0, 12);
+    for (int i = 0; i < 192; i++)
+    {
+        sprintf(byte_D9760[i], "%d", i);
+        dword_DCC00[i] = byte_D9760[i];
+    }
+    FillList(dword_DCF00, stru_CAEF8, 4);
+}
+
+void sub_1058C(void)
+{
+    dbXSectorClean();
+    dbXWallClean();
+    dbXSpriteClean();
+    InitSectorFX();
+    for (int i = 0; i < numsectors; i++)
+    {
+        int nXSector = sector[i].extra;
+        if (nXSector > 0)
+        {
+            switch (sector[i].lotag)
+            {
+            case 604:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0)
+                {
+                    if (nSprite < kMaxSprites && sprite[nSprite].statnum == 10 && sprite[nSprite].type == 8)
+                        sprite[nSprite].owner = i;
+                    else
+                        xsector[nXSector].marker0 = -1;
+                }
+                break;
+            }
+            case 614:
+            case 616:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0)
+                {
+                    if (nSprite < kMaxSprites && sprite[nSprite].statnum == 10 && sprite[nSprite].type == 3)
+                        sprite[nSprite].owner = i;
+                    else
+                        xsector[nXSector].marker0 = -1;
+                }
+                nSprite = xsector[nXSector].marker1;
+                if (nSprite >= 0)
+                {
+                    if (nSprite < kMaxSprites && sprite[nSprite].statnum == 10 && sprite[nSprite].type == 4)
+                        sprite[nSprite].owner = i;
+                    else
+                        xsector[nXSector].marker1 = -1;
+                }
+                break;
+            }
+            case 613:
+            case 615:
+            case 617:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0)
+                {
+                    if (nSprite < kMaxSprites && sprite[nSprite].statnum == 10 && sprite[nSprite].type == 5)
+                        sprite[nSprite].owner = i;
+                    else
+                        xsector[nXSector].marker0 = -1;
+                }
+                break;
+            }
+            }
+        }
+    }
+    for (int i = 0; i < numsectors; i++)
+    {
+        int nXSector = sector[i].extra;
+        if (nXSector > 0)
+        {
+            switch (sector[i].lotag)
+            {
+            case 604:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0 && i != sprite[nSprite].owner)
+                {
+                    int vd = InsertSprite(sprite[nSprite].sectnum, 10);
+                    sprite[vd] = sprite[nSprite];
+                    sprite[vd].owner = i;
+                    xsector[nXSector].marker0 = vd;
+                }
+                if (xsector[nXSector].marker0 < 0)
+                {
+                    int vd = InsertSprite(i, 10);
+                    sprite[vd].x = wall[sector[i].wallptr].x;
+                    sprite[vd].y = wall[sector[i].wallptr].y;
+                    sprite[vd].owner = i;
+                    sprite[vd].type = 8;
+                    xsector[nXSector].marker0 = vd;
+                }
+                break;
+            }
+            case 614:
+            case 616:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0 && i != sprite[nSprite].owner)
+                {
+                    int vd = InsertSprite(sprite[nSprite].sectnum, 10);
+                    sprite[vd] = sprite[nSprite];
+                    sprite[vd].owner = i;
+                    xsector[nXSector].marker0 = vd;
+                }
+                if (xsector[nXSector].marker0 < 0)
+                {
+                    int vd = InsertSprite(i, 10);
+                    sprite[vd].x = wall[sector[i].wallptr].x;
+                    sprite[vd].y = wall[sector[i].wallptr].y;
+                    sprite[vd].owner = i;
+                    sprite[vd].type = 3;
+                    xsector[nXSector].marker0 = vd;
+                }
+                nSprite = xsector[nXSector].marker1;
+                if (nSprite >= 0 && i != sprite[nSprite].owner)
+                {
+                    int vd = InsertSprite(sprite[nSprite].sectnum, 10);
+                    sprite[vd] = sprite[nSprite];
+                    sprite[vd].owner = i;
+                    xsector[nXSector].marker1 = vd;
+                }
+                if (xsector[nXSector].marker1 < 0)
+                {
+                    int vd = InsertSprite(i, 10);
+                    sprite[vd].x = wall[sector[i].wallptr].x;
+                    sprite[vd].y = wall[sector[i].wallptr].y;
+                    sprite[vd].owner = i;
+                    sprite[vd].type = 4;
+                    xsector[nXSector].marker1 = vd;
+                }
+                break;
+            }
+            case 613:
+            case 615:
+            case 617:
+            {
+                int nSprite = xsector[nXSector].marker0;
+                if (nSprite >= 0 && i != sprite[nSprite].owner)
+                {
+                    int vd = InsertSprite(sprite[nSprite].sectnum, 10);
+                    sprite[vd] = sprite[nSprite];
+                    sprite[vd].owner = i;
+                    xsector[nXSector].marker0 = vd;
+                }
+                if (xsector[nXSector].marker0 < 0)
+                {
+                    int vd = InsertSprite(i, 10);
+                    sprite[vd].x = wall[sector[i].wallptr].x;
+                    sprite[vd].y = wall[sector[i].wallptr].y;
+                    sprite[vd].owner = i;
+                    sprite[vd].type = 5;
+                    xsector[nXSector].marker0 = vd;
+                }
+                break;
+            }
+            default:
+                xsector[nXSector].marker0 = -1;
+                xsector[nXSector].marker1 = -1;
+                break;
+            }
+        }
+    }
+    int nNextSprite;
+    for (int nSprite = headspritestat[10]; nSprite != -1; nSprite = nNextSprite)
+    {
+        sprite[nSprite].extra = -1;
+        sprite[nSprite].cstat |= 0x8000;
+        sprite[nSprite].cstat &= ~0x101;
+        nNextSprite = nextspritestat[nSprite];
+        int nSector = sprite[nSprite].owner;
+        int nXSector = sector[nSector].extra;
+        if (nSector >= 0 && nSector < numsectors)
+        {
+            if (nXSector > 0 && nXSector < kMaxXSectors)
+            {
+                switch (sprite[nSprite].type)
+                {
+                case 4:
+                    sprite[nSprite].picnum = 3997;
+                    if (nSprite == xsector[nXSector].marker1)
+                        continue;
+                    break;
+                case 3:
+                case 5:
+                    sprite[nSprite].picnum = 3997;
+                case 8:
+                    if (nSprite == xsector[nXSector].marker0)
+                        continue;
+                    break;
+                }
+            }
+        }
+        DeleteSprite(nSprite);
+    }
+}
+
+int sub_10DBC(int nSector)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    int nXSector = sector[nSector].extra;
+    if (nXSector <= 0)
+        nXSector = dbInsertXSector(nSector);
+    return nXSector;
+}
+
+int sub_10E08(int nWall)
+{
+    dassert(nWall >= 0 && nWall < kMaxWalls);
+    int nXWall = wall[nWall].extra;
+    if (nXWall <= 0)
+        nXWall = dbInsertXWall(nWall);
+    return nXWall;
+}
+
+int sub_10E50(int nSprite)
+{
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    int nXSprite = sprite[nSprite].extra;
+    if (nXSprite <= 0)
+        nXSprite = dbInsertXSprite(nSprite);
+    return nXSprite;
+}
+
+struct StructCAF10 {
+    short at0;
+    short at2;
+    short at4;
+    short at6;
+    signed char at8;
+    short at9;
+};
+
+StructCAF10 stru_CAF10[] = {
+    { 1, -1, -1, -1, 0, 0 },
+    { 2, -1, -1, -1, 0, 5 },
+    { 6, 2331, 64, 64, 0, 0 },
+    { 7, 2332, 64, 64, 0, 0 },
+    { 10, 2331, 64, 64, 0, 0 },
+    { 9, 2332, 64, 64, 0, 0 },
+    { 12, 2331, 64, 64, 0, 0 },
+    { 11, 2332, 64, 64, 0, 0 },
+    { 14, 2331, 64, 64, 0, 0 },
+    { 13, 2332, 64, 64, 0, 0 },
+    { 15, 2319, 64, 64, 0, 0 },
+    { 18, 2077, 64, 64, 0, 0 },
+    { 19, 2072, 64, 64, 0, 0 },
+    { 20, -1, -1, -1, 1, -1 },
+    { 21, -1, -1, -1, 1, -1 },
+    { 22, -1, -1, -1, 1, -1 },
+    { 23, 948, -1, -1, 1, -1 },
+    { 30, 550, -1, -1, 1, -1 },
+    { 30, 572, -1, -1, 1, -1 },
+    { 30, 560, -1, -1, 1, -1 },
+    { 30, 564, -1, -1, 1, -1 },
+    { 30, 570, -1, -1, 1, -1 },
+    { 30, 554, -1, -1, 1, -1 },
+    { 32, 938, -1, -1, 1, -1 },
+
+    { 40, 832, 48, 48, 0, 0 },
+    { 43, 524, 48, 48, 0, 0 },
+    { 41, 559, 48, 48, 0, 0 },
+    { 42, 558, 48, 48, 0, 0 },
+    { 46, 526, 48, 48, 0, 0 },
+    { 45, 539, 48, 48, 0, 0 },
+    { 50, 800, 48, 48, 0, 0 },
+
+    { 60, 618, 40, 40, 1, 0 },
+    { 62, 589, 48, 48, 1, 0 },
+    { 63, 809, 48, 48, 1, 0 },
+    { 64, 811, 40, 40, 0, 0 },
+    { 65, 810, 40, 40, 0, 0 },
+    { 66, 820, 24, 24, 0, 0 },
+    { 67, 619, 48, 48, 0, 0 },
+    { 68, 812, 48, 48, 0, 0 },
+    { 69, 813, 48, 48, 0, 0 },
+    { 70, 525, 48, 48, 0, 0 },
+    { 72, 817, 48, 48, 0, 0 },
+    { 73, 548, 24, 24, 0, 0 },
+    { 76, 816, 48, 48, 0, 0 },
+    { 79, 801, 48, 48, 0, 0 },
+    { 80, 832, 40, 40, 0, 0 },
+    { 100, 2552, 32, 32, 0, 0 },
+    { 101, 2553, 32, 32, 0, 0 },
+    { 102, 2554, 32, 32, 0, 0 },
+    { 103, 2555, 32, 32, 0, 0 },
+    { 104, 2556, 32, 32, 0, 0 },
+    { 105, 2557, 32, 32, 0, 0 },
+    { 106, -1, -1, -1, 0, 0 },
+    { 107, 519, 48, 48, 0, 0 },
+    { 108, 822, 40, 40, 0, 0 },
+    { 109, 2169, 40, 40, 0, 0 },
+    { 110, 2433, 40, 40, 0, 0 },
+    { 113, 896, 40, 40, 0, 0 },
+    { 114, 825, 40, 40, 0, 0 },
+    { 115, 827, 40, 40, 0, 0 },
+    { 117, 829, 40, 40, 0, 0 },
+    { 118, 830, 80, 64, 0, 0 },
+    { 121, 760, 40, 40, 0, 0 },
+    { 124, 2428, 40, 40, 0, 0 },
+    { 125, 839, 40, 40, 0, 0 },
+    { 127, 840, 48, 48, 0, 0 },
+    { 128, 841, 48, 48, 0, 0 },
+    { 129, 842, 48, 48, 0, 0 },
+    { 130, 843, 48, 48, 0, 0 },
+    { 136, 518, 40, 40, 0, 0 },
+    { 137, 522, 40, 40, 0, 0 },
+    { 138, 523, 40, 40, 0, 0 },
+    { 140, 2628, 64, 64, 0, 0 },
+    { 141, 2586, 64, 64, 0, 0 },
+    { 142, 2578, 64, 64, 0, 0 },
+    { 143, 2602, 64, 64, 0, 0 },
+    { 144, 2594, 64, 64, 0, 0 },
+    { 144, 2594, 64, 64, 0, 0 },
+    { 145, -1, 64, 64, 1, 0 },
+    { 146, -1, 64, 64, 1, 0 },
+
+    { 200, 832, 64, 64, 1, 0 },
+    { 201, 2820, 40, 40, 1, 3 },
+    { 202, 2825, 40, 40, 1, 0 },
+    { 247, 2820, 40, 40, 1, 11 },
+    { 248, 2820, 40, 40, 1, 13 },
+    { 249, 2825, 48, 48, 1, 12 },
+    { 250, 3870, 16, 16, 1, 12 },
+    { 251, 2960, 48, 48, 1, 0 },
+    { 203, 1170, 40, 40, 1, 0 },
+    { 204, 1370, 48, 48, 1, 0 },
+    { 205, 3054, 40, 40, 1, 0 },
+    { 244, 1209, 40, 40, 1, 0 },
+    { 245, 3798, 40, 40, 1, 0 },
+    { 206, 1470, 40, 40, 1, 0 },
+    { 207, 1470, 40, 40, 1, 5 },
+    { 208, 1530, 40, 40, 1, 0 },
+    { 209, 1530, 40, 40, 1, 5 },
+    { 210, 3060, 40, 40, 1, 0 },
+    { 211, 1270, 40, 40, 1, 0 },
+    { 212, 1980, 32, 32, 1, 0 },
+    { 213, 1920, 16, 16, 1, 7 },
+    { 214, 1925, 24, 24, 1, 4 },
+    { 216, 1930, 40, 40, 1, 0 },
+    { 215, 1935, 32, 32, 1, 4 },
+    { 217, 1570, 48, 48, 1, 0 },
+    { 218, 1870, 32, 32, 1, 0 },
+    { 219, 1948, 32, 32, 1, 0 },
+    { 220, 1745, 24, 24, 1, 0 },
+    { 221, 1792, 32, 32, 1, 0 },
+    { 222, 1797, 32, 32, 1, 0 },
+    { 223, 1792, 48, 48, 1, 2 },
+    { 224, 1797, 48, 48, 1, 2 },
+    { 225, 1792, 64, 64, 1, 6 },
+    { 226, 1797, 64, 64, 1, 6 },
+    { 227, 2680, 64, 64, 1, 0 },
+    { 229, 3140, 64, 64, 1, 0 },
+    { 230, 3385, 40, 40, 1, 3 },
+    { 231, 2860, 40, 40, 1, 0 },
+    { 232, 2860, 40, 40, 1, 0 },
+    { 233, 2860, 40, 40, 1, 0 },
+    { 234, 2860, 40, 40, 1, 0 },
+    { 235, 2860, 40, 40, 1, 0 },
+    { 236, 2860, 40, 40, 1, 0 },
+    { 237, 2860, 40, 40, 1, 0 },
+    { 238, 2860, 40, 40, 1, 0 },
+    { 243, 2860, 40, 40, 1, 0 },
+    { 246, 3385, 40, 40, 1, 0 },
+    { 400, 907, 64, 64, 1, 0 },
+    { 401, 3444, 40, 40, 1, 0 },
+    { 402, 3457, 40, 40, 1, 0 },
+    { 403, 739, -1, -1, 1, 0 },
+    { 404, 642, -1, -1, 1, 0 },
+    { 405, 462, -1, -1, 1, 0 },
+    { 406, 266, -1, -1, 1, 0 },
+    { 407, 796, -1, -1, 1, 0 },
+    { 408, -1, -1, -1, 0, -1 },
+    { 409, 1142, -1, -1, 1, 0 },
+    { 410, 1069, -1, -1, 1, 0 },
+    { 411, 483, -1, -1, 1, -1 },
+    { 412, -1, -1, -1, 1, -1 },
+    { 413, -1, 64, 64, 0, 0 },
+    { 414, -1, -1, -1, 1, 0 },
+    { 415, -1, 48, 48, 1, 0 },
+    { 416, -1, -1, -1, -1, -1 },
+    { 417, -1, -1, -1, -1, -1 },
+    { 427, -1, 40, 40, 1, -1 },
+    { 450, 968, 64, 64, 0, 0 },
+    { 451, -1, 64, 64, 0, 0 },
+    { 452, 2183, -1, -1, 0, 0 },
+    { 454, 655, -1, -1, 0, 0 },
+    { 455, 1156, -1, -1, 0, 0 },
+    { 456, 1156, -1, -1, 0, 0 },
+    { 457, 1080, -1, -1, 0, 0 },
+    { 458, 835, -1, -1, 0, 0 },
+    { 459, 908, 4, -1, 0, 0 },
+    { 708, 2519, 64, 64, 0, 0 },
+    { 709, 2520, 64, 64, 0, 0 },
+    { 710, 2521, 64, 64, 0, 0 },
+    { 711, 2519, 64, 64, 0, 5 },
+};
+
+void sub_10EA0()
+{
+    for (int i = 0; i < kMaxSprites; i++)
+    {
+        spritetype* pSprite = &sprite[i];
+        if (pSprite->statnum < kMaxStatus)
+        {
+            if ((pSprite->cstat & 0x30) == 0x30)
+                pSprite->cstat &= ~0x30;
+            if (pSprite->statnum == 1)
+                continue;
+            int vbp, vdi;
+            vbp = vdi = -1;
+            if (pSprite->type)
+            {
+                if (!dword_D9A90[pSprite->type])
+                    pSprite->type = 0;
+            }
+            for (unsigned int j = 0; j < 159; j++)
+            {
+                if (stru_CAF10[j].at2 >= 0 && stru_CAF10[j].at2 == pSprite->picnum)
+                {
+                    vdi = j;
+                }
+            }
+            for (unsigned int j = 0; j < 159; j++)
+            {
+                if (stru_CAF10[j].at0 == pSprite->type)
+                {
+                    vbp = j;
+                    break;
+                }
+            }
+            int vbx = -1;
+            if (vdi >= 0)
+                vbx = vdi;
+            if (vbp >= 0)
+                vbx = vbp;
+            if (vdi >= 0 && pSprite->type == stru_CAF10[vdi].at0)
+                vbx = vdi;
+            if (vbx < 0)
+                continue;
+            int vdi2 = stru_CAF10[vbx].at0;
+            if (vdi2 == 1 || vdi2 == 2)
+            {
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 0);
+                int nXSprite = sub_10E50(i);
+                xsprite[nXSprite].data1 &= 0x07;
+                pSprite->picnum = 2522 + xsprite[nXSprite].data1;
+            }
+            else if (vdi2 == 18)
+            {
+                pSprite->cstat &= ~0x01;
+                pSprite->cstat |= 0x8000;
+                ChangeSpriteStat(i, 0);
+                sub_10E50(i);
+            }
+            else if (vdi2 == 19)
+            {
+                pSprite->cstat &= ~0x101;
+                pSprite->cstat |= 0x8000;
+                ChangeSpriteStat(i, 0);
+                sub_10E50(i);
+            }
+            else if (vdi2 == 7 || vdi2 == 6 || vdi2 == 9
+                || vdi2 == 10 || vdi2 == 13 || vdi2 == 14
+                || vdi2 == 11 || vdi2 == 12)
+            {
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 0);
+                sub_10E50(i);
+                pSprite->cstat &= ~0x08;
+            }
+            else if (vdi2 == 15)
+            {
+                ChangeSpriteStat(i, 16);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 20 && vdi2 < 24)
+            {
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 0);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 40 && vdi2 < 51)
+            {
+                if (pSprite->cstat & 0x30)
+                    continue;
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 3);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 60 && vdi2 < 81)
+            {
+                if (pSprite->cstat & 0x30)
+                    continue;
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 3);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 100 && vdi2 < 149)
+            {
+                if (pSprite->cstat & 0x30)
+                    continue;
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 3);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 200 && vdi2 < 254)
+            {
+                if (pSprite->cstat & 0x30)
+                    continue;
+                pSprite->cstat &= ~0x01;
+                ChangeSpriteStat(i, 6);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 400 && vdi2 < 433)
+            {
+                ChangeSpriteStat(i, 4);
+                sub_10E50(i);
+            }
+            else if (vdi2 >= 450 && vdi2 < 460)
+            {
+                ChangeSpriteStat(i, 11);
+                sub_10E50(i);
+            }
+            else if (vdi2 == 709)
+            {
+                pSprite->cstat &= ~0x101;
+                pSprite->cstat |= 0x8000;
+                pSprite->shade = -128;
+                ChangeSpriteStat(i, 0);
+            }
+            else if (vdi2 == 710)
+            {
+                pSprite->cstat &= ~0x101;
+                pSprite->cstat |= 0x8000;
+                pSprite->shade = -128;
+                ChangeSpriteStat(i, 12);
+            }
+            else if (vdi2 == 711)
+            {
+                pSprite->cstat &= ~0x101;
+                pSprite->cstat |= 0x8000;
+                pSprite->shade = -128;
+                ChangeSpriteStat(i, 0);
+            }
+            else
+            {
+                ChangeSpriteStat(i, 0);
+            }
+            pSprite->type = vdi2;
+            if (stru_CAF10[vbx].at2 >= 0)
+                pSprite->picnum = stru_CAF10[vbx].at2;
+            if (stru_CAF10[vbx].at4 >= 0)
+                pSprite->xoffset = stru_CAF10[vbx].at4;
+            if (stru_CAF10[vbx].at6 >= 0)
+                pSprite->xoffset = stru_CAF10[vbx].at6;
+
+            if (stru_CAF10[vbx].at8 == 0)
+                pSprite->cstat &= ~0x100;
+            else if (stru_CAF10[vbx].at8 > 0)
+                pSprite->cstat |= 0x100;
+            if (stru_CAF10[vbx].at9 >= 0)
+                pSprite->pal = stru_CAF10[vbx].at9;
+
+            if (pSprite->statnum == 4 || pSprite->statnum == 6)
+            {
+                int top, bottom;
+                GetSpriteExtents(pSprite, &top, &bottom);
+                if (!(sector[pSprite->sectnum].ceilingstat & 0x01))
+                {
+                    pSprite->z += ClipLow(sector[pSprite->sectnum].ceilingz - top, 0);
+                }
+                if (!(sector[pSprite->sectnum].floorstat & 0x01))
+                {
+                    pSprite->z += ClipHigh(sector[pSprite->sectnum].floorz - bottom, 0);
+                }
+            }
+        }
+    }
+    int vbx = gCorrectedSprites;
+    for (int i = 0; i < kMaxSprites; i++)
+    {
+        spritetype* pSprite = &sprite[i];
+        if ((pSprite->statnum == 4 && (pSprite->type < 400 || pSprite->type >= 433))
+           || (pSprite->statnum == 3 && (pSprite->type < 100 || pSprite->type >= 433) && (pSprite->type < 60 || pSprite->type >= 81) && (pSprite->type < 40 || pSprite->type >= 51))
+            || (pSprite->statnum == 6 && (pSprite->type < 200 || pSprite->type >= 254))
+             || pSprite->statnum == 1)
+        {
+            pSprite->statnum = 0; // Should we use ChangeSpriteStat here?
+            gCorrectedSprites++;
+        }
+    }
+    if (vbx != gCorrectedSprites)
+    {
+        char buffer[40];
+        sprintf(buffer, "Fixed %d sprites", gCorrectedSprites - vbx);
+        if (qsetmode == 200)
+            scrSetMessage(buffer);
+        else
+            printmessage16(buffer);
+    }
+}
+
+void sub_1159C(int nSprite) // ???
+{
+    short v800[1024];
+    memset(v800, 0, sizeof(v800));
+    for (int i = 0; i < kMaxSprites; i++)
+    {
+        if (sprite[i].statnum < kMaxStatus)
+        {
+            v800[sprite[i].type] ++;
+        }
+    }
+}
+
+char byte_CA8A8[256];
+
+const char* ExtGetSectorCaption(short nSector)
+{
+    char v100[256];
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    int nXSector = sector[nSector].extra;
+    byte_CA8A8[0] = 0;
+    if (nXSector > 0)
+    {
+        if (xsector[nXSector].rxID > 0)
+            sprintf(byte_CA8A8, "%i:", xsector[nXSector].rxID);
+
+        strcat(byte_CA8A8, dword_DBA90[sector[nSector].lotag]);
+
+        if (xsector[nXSector].txID > 0)
+        {
+            sprintf(v100, ":%i", xsector[nXSector].txID);
+            strcat(byte_CA8A8, v100);
+        }
+
+        if (xsector[nXSector].panVel)
+        {
+            sprintf(v100, " PAN(%i,%i)", xsector[nXSector].panAngle, xsector[nXSector].panVel);
+            strcat(byte_CA8A8, v100);
+        }
+
+        strcat(byte_CA8A8, " ");
+        strcat(byte_CA8A8, dword_D9A88[xsector[nXSector].state]);
+    }
+    else if (sector[nSector].lotag || sector[nSector].hitag)
+    {
+        sprintf(byte_CA8A8, "{%i:%i}", sector[nSector].hitag, sector[nSector].lotag);
+    }
+    return byte_CA8A8;
+}
+
+const char* ExtGetWallCaption(short nWall)
+{
+    char v100[256];
+    dassert(nWall >= 0 && nWall < kMaxWalls);
+    int nXWall = wall[nWall].extra;
+    byte_CA8A8[0] = 0;
+    if (nXWall > 0)
+    {
+        if (xwall[nXWall].rxID > 0)
+        {
+            sprintf(v100, "%i:", xwall[nXWall].rxID);
+            strcat(byte_CA8A8, v100);
+        }
+
+        strcat(byte_CA8A8, dword_DAA90[wall[nXWall].lotag]);
+
+        if (xwall[nXWall].txID > 0)
+        {
+            sprintf(v100, ":%i", xwall[nXWall].txID);
+            strcat(byte_CA8A8, v100);
+        }
+
+        if (xwall[nXWall].panXVel || xwall[nXWall].panYVel)
+        {
+            sprintf(v100, " PAN(%i,%i)", xwall[nXWall].panXVel, xwall[nXWall].panYVel);
+            strcat(byte_CA8A8, v100);
+        }
+
+        strcat(byte_CA8A8, " ");
+        strcat(byte_CA8A8, dword_D9A88[xwall[nXWall].state]);
+    }
+    else if (wall[nWall].lotag || wall[nWall].hitag)
+    {
+        sprintf(byte_CA8A8, "{%i:%i}", wall[nWall].hitag, wall[nWall].lotag);
+    }
+    return byte_CA8A8;
+}
+
+const char* ExtGetSpriteCaption(short nSprite)
+{
+    char v100[256];
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    spritetype* pSprite = &sprite[nSprite];
+    if (pSprite->type == 0)
+        return "";
+    if (pSprite->statnum == 10)
+        return "";
+
+    const char* pzString = dword_D9A90[pSprite->type];
+    if (!pzString)
+        return "";
+
+    int nXSprite = pSprite->extra;
+    if (nXSprite > 0)
+    {
+        XSPRITE* pXSprite = &xsprite[nXSprite];
+        switch (pSprite->type)
+        {
+        case 1:
+        case 2:
+        case 6:
+        case 7:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 18:
+        case 19:
+            sprintf(byte_CA8A8, "%s [%d]", pzString, pXSprite->data1);
+            return byte_CA8A8;
+        }
+        byte_CA8A8[0] = 0;
+        if (pXSprite->rxID > 0)
+        {
+            sprintf(v100, "%i:", pXSprite->rxID);
+            strcat(byte_CA8A8, v100);
+        }
+
+        strcat(byte_CA8A8, pzString);
+
+        if (pXSprite->txID > 0)
+        {
+            sprintf(v100, ":%i", pXSprite->txID);
+            strcat(byte_CA8A8, v100);
+        }
+
+        if (pSprite->type >= 20 && pSprite->type < 33)
+        {
+            strcat(byte_CA8A8, " ");
+            strcat(byte_CA8A8, dword_D9A88[xsprite[nXSprite].state]);
+        }
+        return byte_CA8A8;
+    }
+
+    return pzString;
+}
+
+void ExtShowSectorData(short nSector)
+{
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        EditSectorData(nSector);
+    else
+        ShowSectorData(nSector);
+}
+
+void ExtShowWallData(short nWall)
+{
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        EditWallData(nWall);
+    else
+        ShowWallData(nWall);
+}
+
+void ExtShowSpriteData(short nSprite)
+{
+    if (keystatus[sc_LeftControl] | keystatus[sc_RightControl])
+        sub_1159C(nSprite);
+    else if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        EditSpriteData(nSprite);
+    else
+        ShowSpriteData(nSprite);
+}
+
+void ExtEditSectorData(short nSector)
+{
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        gXTracker.TrackSector(nSector, 0);
+    else
+        gXTracker.TrackSector(nSector, 1);
+}
+
+void ExtEditWallData(short nWall)
+{
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        gXTracker.TrackWall(nWall, 0);
+    else
+        gXTracker.TrackWall(nWall, 1);
+}
+
+void ExtEditSpriteData(short nSprite)
+{
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+        gXTracker.TrackSprite(nSprite, 0);
+    else
+        gXTracker.TrackSprite(nSprite, 1);
+}
+
+void ExtSaveMap(const char*)
+{
+}
+
+void ExtLoadMap(const char*)
+{
+    for (int i = 0; i < numsectors; i++)
+    {
+        tilePreloadTile(sector[i].ceilingpicnum);
+        tilePreloadTile(sector[i].floorpicnum);
+    }
+    for (int i = 0; i < numwalls; i++)
+    {
+        tilePreloadTile(wall[i].picnum);
+        if (wall[i].overpicnum >= 0)
+            tilePreloadTile(wall[i].overpicnum);
+    }
+    for (int i = 0; i < kMaxSprites; i++)
+    {
+        if (sprite[i].statnum < kMaxStatus)
+            tilePreloadTile(sprite[i].picnum);
+    }
+}
+
+void ExtPreCheckKeys(void)
+{
+    if (qsetmode != 200)
+        return;
+    visibility = gVisibility;
+    DoSectorLighting();
+}
+
+void ExtAnalyzeSprites(void)
+{
+    for (int i = 0; i < spritesortcnt; i++)
+    {
+        spritetype* pTSprite = &tsprite[i];
+        int nTile = pTSprite->picnum;
+        dassert(nTile >= 0 && nTile < kMaxTiles);
+        int nSprite = pTSprite->owner;
+        dassert(nSprite >= 0 && nSprite < kMaxSprites);
+        sectortype* pSector = &sector[pTSprite->sectnum];
+        int nShade = pTSprite->shade;
+        int vb, vd;
+        if ((pSector->ceilingstat & 0x01) && !(pSector->floorstat & 0x8000))
+        {
+            vb = pSector->ceilingpicnum;
+            vd = pSector->ceilingshade;
+        }
+        else
+        {
+            vb = pSector->floorpicnum;
+            vd = pSector->floorshade;
+        }
+        pTSprite->shade = ClipRange(nShade+vd+tileShade[vb]+tileShade[pTSprite->picnum], -128, 127);
+        int nXSprite = pTSprite->extra;
+        int vsi = 0;
+        PICANM *_picanm = (PICANM*)picanm;
+        switch (_picanm[nTile].at3_4)
+        {
+        case 0:
+            if (nXSprite > 0)
+            {
+                dassert(nXSprite < kMaxXSprites);
+                switch (sprite[nSprite].type)
+                {
+                case 20:
+                case 21:
+                    if (xsprite[nXSprite].state)
+                        vsi = 1;
+                    break;
+                case 22:
+                    vsi = xsprite[nXSprite].data1;
+                    break;
+                }
+            }
+            break;
+        case 1:
+        {
+            int dx = pTSprite->x - posx;
+            int dy = pTSprite->y - posy;
+            RotateVector(&dx, &dy,-pTSprite->ang+128);
+            vsi = GetOctant(dx, dy);
+            if (vsi <= 4)
+                pTSprite->cstat &= ~0x04;
+            else
+            {
+                vsi = 8 - vsi;
+                pTSprite->cstat |= 0x04;
+            }
+            break;
+        }
+        case 2:
+        case 3:
+        case 4:
+            break;
+        }
+        for (; vsi > 0; vsi--)
+            pTSprite->picnum += 1 + _picanm[pTSprite->picnum].animframes;
+    }
+}
+
+int dword_DCF10;
+
+void sndProcess()
+{
+}
+
+void sndInit()
+{
+}
+
+void sndTerm()
+{
+}
+
+void ExtCheckKeys()
+{
+    gFrameTicks = totalclock - gFrameClock;
+    gFrameClock += gFrameTicks;
+    sndProcess();
+    if (dword_DCF10 + gAutoSaveInterval < gFrameClock)
+    {
+        dword_DCF10 = gFrameClock;
+        if (asksave)
+        {
+            UndoSectorLighting();
+            sub_1058C();
+            sub_10EA0();
+            dbSaveMap("AUTOSAVE.MAP", posx, posy, posz, ang, cursectnum);
+            if (qsetmode == 200)
+                scrSetMessage("Map autosaved to AUTOSAVE.MAP");
+            else
+                printmessage16("Map autosaved to AUTOSAVE.MAP");
+        }
+    }
+    CalcFrameRate();
+    if (qsetmode == 200)
+    {
+        UndoSectorLighting();
+        Check3DKeys();
+        sprintf(byte_CA8A8, "%3i", gFrameRate);
+        printext256(xdim-12, 0, gStdColor[15], -1, byte_CA8A8, 1);
+        scrDisplayMessage(gStdColor[15]);
+        if (word_CA89C)
+            DoSectorPanning();
+    }
+    else
+    {
+        CheckKeys2D();
+        sprintf(byte_CA8A8, "%3i", gFrameRate);
+        printext16(616, 0, 15, -1, byte_CA8A8, 0);
+    }
+}
+
+int ExtInit()
+{
+    char v100[256];
+    buildprintf("Initializing heap and resource system\n");
+    Resource::heap = new QHeap(128 * 1024 * 1024);
+    buildprintf("Initializing resource archive\n");
+    gSysRes.Init("BLOOD.RFF");
+    gGuiRes.Init("GUI.RFF");
+    // atexit(ExitMsg);
+    // CONFIG_ReadSetup();
+    buildprintf("Loading preferences\n");
+    gBeep = gMapEditIni.GetKeyHex("Options", "Beep", 1);
+    gHighlightThreshold = gMapEditIni.GetKeyInt("Options", "HighlightThreshold", 40);
+    gStairHeight = gMapEditIni.GetKeyInt("Options", "StairHeight", 8);
+    gOldKeyMapping = gMapEditIni.GetKeyInt("Options", "OldKeyMapping", 0);
+    gAutoSaveInterval = (unsigned char)gMapEditIni.GetKeyInt("Options", "AutoSaveInterval", 300)*120;
+    gLightBombIntensity = gMapEditIni.GetKeyInt("LightBomb", "Intensity", 16);
+    gLightBombAttenuation = gMapEditIni.GetKeyInt("LightBomb", "Attenuation", 4096);
+    gLightBombReflections = gMapEditIni.GetKeyInt("LightBomb", "Reflections", 2);
+    gLightBombMaxBright = gMapEditIni.GetKeyInt("LightBomb", "MaxBright", -4);
+    gLightBombRampDist = gMapEditIni.GetKeyInt("LightBomb", "RampDist", 65536);
+    FillStringLists();
+    buildprintf("Initializing mouse\n");
+    if (!initmouse())
+        buildprintf("Mouse not detected\n");
+    // prevErrorHandler = errSetHandler(MapEditErrorHandler);
+    scrInit();
+    buildprintf("Loading tiles\n");
+    // if (!SafeFileExists("TILES000.ART"))
+    // {
+    //     tioPrint("No REGISTERED art found.  Trying to use SHAREWARE.");
+    //     tileInit(0, "SHARE%03i.ART");
+    // }
+    if (!tileInit(0, NULL))
+        ThrowError("ART files not found");
+    buildprintf("Loading cosine table\n");
+    trigInit(gSysRes);
+    buildprintf("Creating standard color lookups\n");
+    scrCreateStdColors();
+    // tioPrint("Installing timer");
+    // timerRegisterClient(sub_12010, 120);
+    // timerInstall();
+    buildprintf("Engaging sound subsystem...\n");
+    sndInit();
+    dbInit();
+
+    visibility = 800;
+    kensplayerheight = 0x3700;
+    zmode = 0;
+    showinvisibility = 1;
+    defaultspritecstat = 0x80;
+    for (int i = 0; i < kMaxSectors; i++)
+    {
+        sector[i].extra = -1;
+    }
+    for (int i = 0; i < kMaxWalls; i++)
+    {
+        wall[i].extra = -1;
+    }
+    for (int i = 0; i < kMaxSprites; i++)
+    {
+        sprite[i].extra = -1;
+    }
+    // scrSetGameMode(ScreenMode, ScreenWidth, ScreenHeight);
+    // Mouse::SetRange(xdim, ydim);
+
+    return 0;
+}
+
+void ExtUnInit()
+{
+    // timerRemove();
+    sndTerm();
+    unlink("AUTOSAVE.MAP");
 }

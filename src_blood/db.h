@@ -376,3 +376,4 @@ void dbInit(void);
 void PropagateMarkerReferences(void);
 unsigned int dbReadMapCRC(const char *pPath);
 int dbLoadMap(const char *pPath, int *pX, int *pY, int *pZ, short *pAngle, short *pSector, unsigned int *pCRC);
+int dbSaveMap(const char *pPath, int nX, int nY, int nZ, short nAngle, short nSector);

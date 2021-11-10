@@ -105,7 +105,7 @@ static int curPalette;
 static int curGamma;
 int gGammaLevels;
 bool gFogMode = false;
-char gStdColor[32];
+unsigned char gStdColor[32];
 int32_t gBrightness;
 
 char scrFindClosestColor(int red, int green, int blue)
