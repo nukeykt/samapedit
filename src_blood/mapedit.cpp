@@ -7192,6 +7192,7 @@ void ExtPreCheckKeys(void)
 {
     if (qsetmode != 200)
         return;
+    gfxSetClip(0, 0, xdim, ydim);
     visibility = gVisibility;
     DoSectorLighting();
 }
