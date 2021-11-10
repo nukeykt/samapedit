@@ -7306,8 +7306,8 @@ void ExtCheckKeys()
     {
         UndoSectorLighting();
         Check3DKeys();
-        sprintf(byte_CA8A8, "%3i", gFrameRate);
-        printext256(xdim-12, 0, gStdColor[15], -1, byte_CA8A8, 1);
+        sprintf(byte_CA8A8, "%4i", gFrameRate);
+        printext256(xdim-16, 0, gStdColor[15], -1, byte_CA8A8, 1);
         scrDisplayMessage(gStdColor[15]);
         if (word_CA89C)
             DoSectorPanning();
@@ -7315,8 +7315,8 @@ void ExtCheckKeys()
     else
     {
         CheckKeys2D();
-        sprintf(byte_CA8A8, "%3i", gFrameRate);
-        printext16(616, 0, 15, -1, byte_CA8A8, 0);
+        sprintf(byte_CA8A8, "%4i", gFrameRate);
+        printext16(xdim-32, 0, 15, -1, byte_CA8A8, 0);
     }
 }
 
