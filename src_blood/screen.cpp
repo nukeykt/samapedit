@@ -159,7 +159,7 @@ void gSetDacRange(int start, int end, RGB *pPal)
             palette[i*3+1] = pPal[i].green >> 2;
             palette[i*3+2] = pPal[i].blue >> 2;
         }
-        setbrightness(/*gBrightness >> 2*/0, 0, 0);
+        setbrightness(/*gBrightness >> 2*/0, palette, 0);
     }
 }
 
