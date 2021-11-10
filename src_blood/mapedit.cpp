@@ -3507,7 +3507,7 @@ void Check3DKeys(void)
     if (searchstat >= 0 && (mouseButtons&1))
         searchit = 0;
 
-    gColor = gStdColor[23+Sin((gFrameClock<<11)/120)];
+    gColor = gStdColor[23+mulscale30(8, Sin((gFrameClock<<11)/120))];
     gfxHLine(searchy, searchx - 6, searchx - 2);
     gfxHLine(searchy, searchx + 2, searchx + 6);
     gfxVLine(searchx, searchy - 5, searchy - 2);
