@@ -427,7 +427,7 @@ void TextButton::Paint(int x, int y, char a3)
 {
     gColor = gStdColor[0];
     gfxHLine(y + 1, x + 2, x + at8 - 3);
-    gfxHLine(y + atc - 2, y + 2, x + at8 - 3);
+    gfxHLine(y + atc - 2, x + 2, x + at8 - 3);
     gfxVLine(x + 1, y + 2, y + atc - 3);
     gfxVLine(x + at8 - 2, y + 2, y + atc - 3);
     if (a3)
