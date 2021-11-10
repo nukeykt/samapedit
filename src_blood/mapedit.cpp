@@ -1289,7 +1289,7 @@ void DrawCircle(int x, int y, int r, int c)
     }
 }
 
-void draw2dscreen(int posxe, int posye, int ange, int zoome, int gride)
+void qdraw2dscreen(int posxe, int posye, short ange, int zoome, short gride)
 {
     char v4;
     char color;
@@ -7155,6 +7155,39 @@ void ExtLoadMap(const char*)
     }
 }
 
+void qsetbrightness(unsigned char *dapal, unsigned char *dapalgamma)
+{
+    scrSetGamma(gGamma);
+    scrSetDac2(dapal, dapalgamma);
+}
+
+int qloadboard(char* filename, char fromwhere, int* daposx, int* daposy, int* daposz, short* daang, short* dacursectnum)
+{
+    // if (access(filename, 0) == -1)
+    //     return -1;
+    if (dbLoadMap(filename, daposx, daposy, daposz, daang, dacursectnum, nullptr) == -1)
+        return -1;
+    sub_1058C();
+    if (qsetmode != 200)
+    {
+        sprintf(byte_CA8A8, "Map Revisions: %i", gMapRev);
+        printext16(4, 28, 11, 8, byte_CA8A8, 0);
+    }
+    return 0;
+}
+
+int qsaveboard(char* filename, int* daposx, int* daposy, int* daposz, short* daang, short* dacursectnum)
+{
+    UndoSectorLighting();
+    sub_1058C();
+    sub_10EA0();
+    byte_1A76C6 = byte_1A76C8 = byte_1A76C7 = 1;
+    dbSaveMap(filename, *daposx, *daposy, *daposz, *daang, *dacursectnum);
+
+    asksave = 0;
+    return 0;
+}
+
 void ExtPreCheckKeys(void)
 {
     if (qsetmode != 200)
@@ -7286,10 +7319,27 @@ void ExtCheckKeys()
     }
 }
 
+#define NUMOPTIONS 9
+extern "C" unsigned char option[NUMOPTIONS] = {0,0,0,0,0,0,1,0,0};
+extern "C" int keys[NUMBUILDKEYS] =
+{
+    0xc8,0xd0,0xcb,0xcd,0x2a,0x9d,0x1d,0x39,
+    0x1e,0x2c,0xd1,0xc9,0x47,0x49,
+    0x9c,0x1c,0xd,0xc,0xf,0x45
+};
+
 int ExtInit()
 {
     char v100[256];
+    int rv = 0;
     HookReplaceFunctions();
+    setbrightness_replace = qsetbrightness;
+    loadboard_replace = qloadboard;
+    saveboard_replace = qsaveboard;
+    getlinehighlight_replace = qgetlinehighlight;
+    getpointhighlight_replace = qgetpointhighlight;
+    draw2dscreen_replace = qdraw2dscreen;
+
     buildprintf("Initializing heap and resource system\n");
     Resource::heap = new QHeap(128 * 1024 * 1024);
     buildprintf("Initializing resource archive\n");
@@ -7309,11 +7359,15 @@ int ExtInit()
     gLightBombMaxBright = gMapEditIni.GetKeyInt("LightBomb", "MaxBright", -4);
     gLightBombRampDist = gMapEditIni.GetKeyInt("LightBomb", "RampDist", 65536);
     FillStringLists();
-    buildprintf("Initializing mouse\n");
-    if (!initmouse())
-        buildprintf("Mouse not detected\n");
     // prevErrorHandler = errSetHandler(MapEditErrorHandler);
+    bpp = 8;
+    if (loadsetup("build.cfg") < 0) buildputs("Configuration file not found, using defaults.\n"), rv = 1;
+    Bmemcpy((void*)buildkeys, (void*)keys, sizeof(buildkeys));   //Trick to make build use setup.dat keys
+    if (option[4] > 0) option[4] = 0;
     scrInit();
+    buildprintf("Initializing mouse\n");
+    initinput();
+    initmouse();
     buildprintf("Loading tiles\n");
     // if (!SafeFileExists("TILES000.ART"))
     // {
@@ -7353,7 +7407,7 @@ int ExtInit()
     // scrSetGameMode(ScreenMode, ScreenWidth, ScreenHeight);
     // Mouse::SetRange(xdim, ydim);
 
-    return 0;
+    return rv;
 }
 
 void ExtUnInit()

@@ -328,6 +328,19 @@ void scrSetDac(void)
 	DacInvalid = 0;
 }
 
+void scrSetDac2(unsigned char* dapal, unsigned char* dapalgamma)
+{
+    for (int i = 0; i < 256; i++)
+    {
+        dapal[i*3+0] = palTable[curPalette][i].red;
+        dapal[i*3+1] = palTable[curPalette][i].green;
+        dapal[i*3+2] = palTable[curPalette][i].blue;
+        dapalgamma[i*3+0] = baseDAC[i].red;
+        dapalgamma[i*3+1] = baseDAC[i].green;
+        dapalgamma[i*3+2] = baseDAC[i].blue;
+    }
+}
+
 void scrInit(void)
 {
     buildprintf("Initializing engine\n");
