@@ -359,11 +359,12 @@ void scrInit(void)
     gammaTable = (char(*)[256])gSysRes.Lock(pGamma);
 }
 
-void scrUnInit(void)
+void scrUnInit(bool engineUninit)
 {
     memset(palookup, 0, sizeof(palookup));
     transluc = nullptr;
-    uninitengine();
+    if (engineUninit)
+        uninitengine();
 }
 
 

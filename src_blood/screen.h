@@ -56,6 +56,6 @@ void scrFadeAmount(int amount);
 void scrSetDac(void);
 void scrSetDac2(unsigned char* dapal, unsigned char* dapalgamma);
 void scrInit(void);
-void scrUnInit(void);
+void scrUnInit(bool engineUninit = true);
 void scrSetGameMode(int vidMode, int XRes, int YRes, int nBits);
 void scrNextPage(void);

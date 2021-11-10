@@ -7437,6 +7437,7 @@ void ExtUnInit()
     // timerRemove();
     sndTerm();
     unlink("AUTOSAVE.MAP");
+    scrUnInit(false);
 }
 
 extern "C" char* defsfilename = "kenbuild.def";
