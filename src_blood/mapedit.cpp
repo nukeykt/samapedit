@@ -13,6 +13,7 @@
 #include "sectorfx.h"
 #include "gameutil.h"
 #include "inifile.h"
+#include "replace.h"
 
 ///////// globals ///////////////
 
@@ -952,7 +953,7 @@ void XSectorControlRead(int nSector)
     pXSector->damageType = ControlRead(controlXSector2, 28); // DamageType
 }
 
-int getpointhighlight_replace(int x, int y) // Replace
+int qgetpointhighlight(int x, int y) // Replace
 {
     int nMinDist = divscale(gHighlightThreshold, gZoom, 14);
     int nStat = -1;
@@ -1087,7 +1088,7 @@ void EditSpriteData(int nSprite)
     sub_10EA0();
 }
 
-int getlinehighlight_replace(int x, int y) // Replace
+int qgetlinehighlight(int x, int y) // Replace
 {
     int nMinDist = divscale(gHighlightThreshold, gZoom, 14);
     int nStat = -1;
@@ -7288,6 +7289,7 @@ void ExtCheckKeys()
 int ExtInit()
 {
     char v100[256];
+    HookReplaceFunctions();
     buildprintf("Initializing heap and resource system\n");
     Resource::heap = new QHeap(128 * 1024 * 1024);
     buildprintf("Initializing resource archive\n");
@@ -7359,4 +7361,20 @@ void ExtUnInit()
     // timerRemove();
     sndTerm();
     unlink("AUTOSAVE.MAP");
+}
+
+extern "C" char* defsfilename = "kenbuild.def";
+extern "C" int nextvoxid = 0;
+
+void faketimerhandler(void)
+{
+    sampletimer();
+}
+
+void ExtPreLoadMap(void)
+{
+}
+
+void ExtPreSaveMap(void)
+{
 }

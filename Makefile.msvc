@@ -118,8 +118,7 @@ GAMEEXEOBJS=$(GAME)\config.$o \
 	$(GAME)\kdmsound_stub.$o \
 	$(SRC)\$(ENGINELIB)
 
-EDITOREXEOBJS=$(GAME)\bstubken.$o \
-	$(GAME)\common.$o \
+EDITOREXEOBJS=$(GAME)\common.$o \
 	$(GAME)\screen.$o \
 	$(GAME)\trig.$o \
 	$(GAME)\iob.$o \
@@ -134,6 +133,7 @@ EDITOREXEOBJS=$(GAME)\bstubken.$o \
 	$(GAME)\gfx.$o \
 	$(GAME)\gui.$o \
 	$(GAME)\tracker.$o \
+	$(GAME)\replace.$o \
 	$(GAME)\mapedit.$o \
 	$(GAME)\buildres.$(res) \
 	$(SRC)\$(EDITORLIB) \
