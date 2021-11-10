@@ -500,7 +500,7 @@ void tilePreloadTile(int nTile)
 // int nPrecacheCount;
 // char precachehightile[2][(MAXTILES+7)>>3];
 
-void tilePrecacheTile(int nTile, int nType)
+void tilePrecacheTile(int nTile)
 {
     int n = 1;
     PICANM *_picanm = (PICANM*)picanm;

@@ -46,8 +46,10 @@ extern char surfType[kMaxTiles];
 extern signed char tileShade[kMaxTiles];
 extern short voxelIndex[kMaxTiles];
 
-extern int nPrecacheCount;
-extern char precachehightile[2][(MAXTILES+7)>>3];
+// extern int nPrecacheCount;
+// extern char precachehightile[2][(MAXTILES+7)>>3];
+extern short tileIndex[kMaxTiles];
+extern int tileIndexCount;
 
 // extern int32_t MAXCACHE1DSIZE;
 
@@ -61,5 +63,6 @@ int tileInit(char a1, const char *a2);
 char * tileLoadTile(int nTile);
 char * tileAllocTile(int nTile, int x, int y, int ox, int oy);
 void tilePreloadTile(int nTile);
-void tilePrecacheTile(int nTile, int nType = 1);
+void tilePrecacheTile(int nTile);
+int tilePick(int a1, int a2, int a3);
 char tileGetSurfType(int hit);

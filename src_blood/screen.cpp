@@ -261,6 +261,23 @@ void scrLoadPalette(void)
     // palettePostLoadLookups();
 }
 
+char message[256];
+int messageTime;
+
+void scrSetMessage(const char *a1)
+{
+    messageTime = totalclock;
+    strcpy(message, a1);
+}
+
+void scrDisplayMessage(int a1)
+{
+    if (messageTime + 360 > totalclock)
+    {
+        gfxDrawText(windowx1, windowy1, a1, message, nullptr);
+    }
+}
+
 void scrSetPalette(int palId)
 {
     curPalette = palId;

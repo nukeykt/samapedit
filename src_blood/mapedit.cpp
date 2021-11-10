@@ -6,12 +6,25 @@
 #include "keyboard.h"
 #include "trig.h"
 #include "tracker.h"
+#include "tile.h"
+#include "gui.h"
+#include "gfx.h"
+#include "screen.h"
+#include "sectorfx.h"
+#include "gameutil.h"
 
 ///////// globals ///////////////
 
 extern "C" {
 extern int angvel, svel, vel;
 extern short pointhighlight, linehighlight, highlightcnt;
+extern short highlight[MAXWALLS];
+extern short highlightsector[MAXSECTORS], highlightsectorcnt;
+extern short asksave;
+void updatenumsprites(void);
+void fixrepeats(short i);
+unsigned char changechar(unsigned char dachar, int dadir, unsigned char smooshyalign, unsigned char boundcheck);
+void overheadeditor(void);
 };
 
 char gTempBuf[256];
@@ -24,17 +37,8 @@ short sectorhighlight;
 
 unsigned char byte_CBA0C = 1;
 
-int gBeep;
-
-void ModifyBeep(void);
-void Beep(void);
-void sub_1058C(void);
-int sub_10DBC(int nSector);
-int sub_10E08(int nWall);
-int sub_10E50(int nSprite);
-void sub_10EA0(void);
-
-/////////// 2d editor /////////////
+unsigned char gBeep;
+unsigned char gOldKeyMapping;
 
 const char* dword_D9A88[2];
 const char* dword_D9A90[1024];
@@ -46,6 +50,16 @@ const char* dword_DCB00[64];
 const char* dword_DCC00[192];
 const char* dword_DCF00[4];
 char byte_D9760[192][4];
+
+void ModifyBeep(void);
+void Beep(void);
+void sub_1058C(void);
+int sub_10DBC(int nSector);
+int sub_10E08(int nWall);
+int sub_10E50(int nSprite);
+void sub_10EA0(void);
+
+/////////// 2d editor /////////////
 
 struct CONTROL {
     int at0;
@@ -1734,6 +1748,4250 @@ void CheckKeys2D(void)
             printmessage16(gTempBuf);
             ModifyBeep();
         }
+        break;
+    }
+    if (key)
+        keyFlushScans();
+}
+
+///////////////////// 3d editor //////////////////
+
+
+
+
+void SetSectorCeilZ(int nSector, int z)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    z = ClipHigh(z, sector[nSector].floorz);
+    for (int nSprite = headspritesect[nSector]; nSprite != -1; nSprite = nextspritesect[nSprite])
+    {
+        spritetype* pSprite = &sprite[nSprite];
+        int top, bottom;
+        GetSpriteExtents(pSprite, &top, &bottom);
+        if (getceilzofslope(nSector, pSprite->x, pSprite->y) >= top)
+            pSprite->z += z - sector[nSector].ceilingz;
+    }
+    sector[nSector].ceilingz = z;
+}
+
+void SetSectorFloorZ(int nSector, int z)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    z = ClipLow(z, sector[nSector].ceilingz);
+    for (int nSprite = headspritesect[nSector]; nSprite != -1; nSprite = nextspritesect[nSprite])
+    {
+        spritetype* pSprite = &sprite[nSprite];
+        int top, bottom;
+        GetSpriteExtents(pSprite, &top, &bottom);
+        if (getflorzofslope(nSector, pSprite->x, pSprite->y) <= bottom)
+            pSprite->z += z - sector[nSector].floorz;
+    }
+    sector[nSector].floorz = z;
+}
+
+void SetSectorCeilSlope(int nSector, int slope)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    sector[nSector].ceilingheinum = slope;
+    if (sector[nSector].ceilingheinum == 0)
+        sector[nSector].ceilingstat &= ~0x02;
+    else
+        sector[nSector].ceilingstat |= 0x02;
+    for (int nSprite = headspritesect[nSector]; nSprite != -1; nSprite = nextspritesect[nSprite])
+    {
+        spritetype* pSprite = &sprite[nSprite];
+        int top, bottom;
+        GetSpriteExtents(pSprite, &top, &bottom);
+        int z = getceilzofslope(nSector, pSprite->x, pSprite->y);
+        if (z > top)
+            sprite[nSprite].z += z - top;
+    }
+}
+
+void SetSectorFloorSlope(int nSector, int slope)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    sector[nSector].floorheinum = slope;
+    if (sector[nSector].floorheinum == 0)
+        sector[nSector].floorstat &= ~0x02;
+    else
+        sector[nSector].floorstat |= 0x02;
+    for (int nSprite = headspritesect[nSector]; nSprite != -1; nSprite = nextspritesect[nSprite])
+    {
+        spritetype* pSprite = &sprite[nSprite];
+        int top, bottom;
+        GetSpriteExtents(pSprite, &top, &bottom);
+        int z = getflorzofslope(nSector, pSprite->x, pSprite->y);
+        if (z < bottom)
+            sprite[nSprite].z += z - bottom;
+    }
+}
+
+void SetSectorLightingPhase(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    int nXSector = sector[nSector].extra;
+    if (nXSector > 0)
+    {
+        XSECTOR* pXSector = &xsector[nXSector];
+        pXSector->phase = a2;
+    }
+}
+
+void SetSectorMotionTheta(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    int nXSector = sector[nSector].extra;
+    if (nXSector > 0)
+    {
+        XSECTOR* pXSector = &xsector[nXSector];
+        pXSector->bobTheta = a2;
+    }
+}
+
+char IsSectorHighlight(int nSector)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    for (int i = 0; i < highlightsectorcnt; i++)
+    {
+        if (highlightsector[i] == nSector)
+            return 1;
+    }
+    return 0;
+}
+
+inline int GetWallZPeg(int nWall)
+{
+    dassert(nWall >= 0 && nWall < kMaxWalls);
+    int nSector = sectorofwall(nWall);
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    int nNextSector = wall[nWall].nextsector;
+    int z;
+    if (nNextSector == -1)
+    {
+        if (wall[nWall].cstat & 0x04)
+            z = sector[nSector].floorz;
+        else
+            z = sector[nSector].ceilingz;
+    }
+    else
+    {
+        if (wall[nWall].cstat & 0x04)
+            z = sector[nSector].floorz;
+        else
+        {
+            if (sector[nNextSector].ceilingz > sector[nSector].ceilingz)
+                z = sector[nNextSector].ceilingz;
+            if (sector[nNextSector].floorz < sector[nSector].floorz)
+                z = sector[nNextSector].floorz;
+        }
+    }
+    return z;
+}
+
+void AlignWalls(int nWall0, int z0, int nWall1, int z1, int nTile)
+{
+    dassert(nWall0 >= 0 && nWall0 < kMaxWalls);
+    dassert(nWall1 >= 0 && nWall1 < kMaxWalls);
+    wall[nWall1].cstat &= ~0x108;
+    wall[nWall1].xpanning = ((wall[nWall0].xrepeat<<3)+wall[nWall0].xpanning)%tilesizx[nTile];
+    z1 = GetWallZPeg(nWall1);
+
+    int n = picsiz[nTile]>>4;
+    if ((1<<n) != tilesizy[nTile])
+        n++;
+
+    wall[nWall1].yrepeat = wall[nWall0].yrepeat;
+    wall[nWall1].ypanning = wall[nWall0].ypanning + ((z1-z0)*wall[nWall0].yrepeat) >> (n+3);
+}
+
+char visited[kMaxWalls];
+
+void AutoAlignWalls(int nWall0, int ply)
+{
+    dassert(nWall0 >= 0 && nWall0 < kMaxWalls);
+    int nTile = wall[nWall0].picnum;
+
+    if (ply == 64)
+        return;
+
+    if (ply == 0)
+    {
+        memset(visited, 0, sizeof(visited));
+        visited[nWall0] = 1;
+    }
+
+    int z0 = GetWallZPeg(nWall0);
+
+    int nWall1 = wall[nWall0].point2;
+
+    dassert(nWall1 >= 0 && nWall1 < kMaxWalls);
+
+    while (1)
+    {
+        if (visited[nWall1])
+            break;
+
+        visited[nWall1] = 1;
+
+        if (wall[nWall1].nextwall == nWall0)
+            break;
+
+        if (wall[nWall1].picnum == nTile)
+        {
+            int z1 = GetWallZPeg(nWall1);
+
+            char visible = 0;
+
+            int nNextSector = wall[nWall1].nextsector;
+            if (nNextSector < 0)
+                visible = 1;
+            else
+            {
+                int nSector = wall[wall[nWall1].nextwall].nextsector;
+                if (getceilzofslope(nSector, wall[nWall1].x, wall[nWall1].y) < getceilzofslope(nNextSector, wall[nWall1].x, wall[nWall1].y))
+                    visible = 1;
+                if (getflorzofslope(nSector, wall[nWall1].x, wall[nWall1].y) > getflorzofslope(nNextSector, wall[nWall1].x, wall[nWall1].y))
+                    visible = 1;
+            }
+            if (visible)
+            {
+                AlignWalls(nWall0, z0, nWall1, z1, nTile);
+
+                int nNextWall = wall[nWall1].nextwall;
+                if (nNextWall < 0)
+                {
+                    nWall0 = nWall1;
+                    z0 = GetWallZPeg(nWall0);
+                    nWall1 = wall[nWall0].point2;
+                    continue;
+                }
+                if ((wall[nWall1].cstat & 0x02) && wall[nNextWall].picnum == nTile)
+                    AlignWalls(nWall0, z0, nNextWall, z1, nTile);
+                AutoAlignWalls(nWall0, ply + 1);
+            }
+        }
+
+        if (wall[nWall1].nextwall < 0)
+            break;
+
+        nWall1 = wall[wall[nWall1].nextwall].point2;
+    }
+}
+
+void sub_216F8(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    visited[nSector] = 1;
+    for (int i = 0; i < sector[nSector].wallnum; i++)
+    {
+        int nNextSector = wall[sector[nSector].wallnum+i].nextsector;
+        if (nNextSector == -1)
+            continue;
+        if (IsSectorHighlight(nNextSector) && !visited[nSector])
+        {
+            SetSectorFloorZ(nNextSector, sector[nSector].floorz - a2);
+            sub_216F8(nNextSector, a2);
+        }
+    }
+}
+
+void sub_21798(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    visited[nSector] = 1;
+    for (int i = 0; i < sector[nSector].wallnum; i++)
+    {
+        int nNextSector = wall[sector[nSector].wallnum+i].nextsector;
+        if (nNextSector == -1)
+            continue;
+        if (IsSectorHighlight(nNextSector) && !visited[nSector])
+        {
+            SetSectorCeilZ(nNextSector, sector[nSector].ceilingz - a2);
+            sub_21798(nNextSector, a2);
+        }
+    }
+}
+
+unsigned short WallShadeFrac[kMaxWalls];
+unsigned short FloorShadeFrac[kMaxSectors];
+unsigned short CeilShadeFrac[kMaxSectors];
+int WallArea[kMaxWalls];
+int dword_14ADE8[kMaxWalls];
+int dword_152DE8[kMaxWalls];
+
+int dword_149DE8[kMaxSectors];
+int dword_15ADE8[kMaxSectors];
+int dword_15BDE8[kMaxSectors];
+int dword_15CDE8[kMaxSectors];
+int dword_15DDE8[kMaxSectors];
+int dword_15EDE8[kMaxSectors];
+int dword_15FDE8[kMaxSectors];
+
+
+int gLightBombMaxBright;
+int gLightBombRampDist;
+int gLightBombReflections;
+int gLightBombAttenuation;
+int gLightBombIntensity;
+
+void CalcLightBomb(int x, int y, int z, short nSector, int dx, int dy, int dz, int a8, int a9, int a10)
+{
+    short nHitSect, nHitWall, nHitSprite;
+    int hx, hy, hz;
+    nHitSect = -1;
+    nHitWall = -1;
+    nHitSprite = -1;
+    hitscan(x, y, z, nSector, dx, dy, dz << 4, &nHitSect, &nHitWall, &nHitSprite, &hx, &hy, &hz, 0);
+    int dx_ = klabs(hx - x)>>4;
+    int dy_ = klabs(hy - y)>>4;
+    int dz_ = klabs(hz - z)>>8;
+    a10 += ksqrt(dx_*dx_+dy_*dy_+dz_*dz_);
+    int t = gLightBombRampDist + a10;
+    if (nHitWall >= 0)
+    {
+        int t2 = divscale16(a8, ClipLow(t, 1));
+        if (t2 > 0)
+        {
+            t2 = divscale16(t2, ClipLow(WallArea[nHitWall], 1));
+            int shade = (wall[nHitWall].shade<<16)+WallShadeFrac[nHitWall]-t2;
+            wall[nHitWall].shade = ClipLow(shade>>16, gLightBombMaxBright);
+            WallShadeFrac[nHitWall] = shade & 0xffff;
+            if (a9 < gLightBombReflections)
+            {
+                int wx = dword_14ADE8[nHitWall];
+                int wy = dword_152DE8[nHitWall];
+                int dot = dmulscale16(dx, wx, dy, wy);
+                if (dot >= 0)
+                {
+                    dx -= mulscale16(dot*2, wx);
+                    dy -= mulscale16(dot*2, wy);
+                    hx += dx >> 12;
+                    hy += dy >> 12;
+                    hz += dz >> 12;
+                    a8 -= mulscale16(a8, gLightBombAttenuation);
+                    CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+                }
+            }
+        }
+    }
+    else if (nHitSprite >= 0)
+    {
+
+    }
+    else if (dz > 0)
+    {
+        int t2 = divscale16(a8, ClipLow(t, 1));
+        if (t2 > 0)
+        {
+            t2 = divscale16(t2, ClipLow(dword_149DE8[nHitSect], 1));
+            int shade = (sector[nHitSect].floorshade<<16)+FloorShadeFrac[nHitSect]-t2;
+            sector[nHitSect].floorshade = ClipLow(shade>>16, gLightBombMaxBright);
+            FloorShadeFrac[nHitSect] = shade & 0xffff;
+            if (a9 < gLightBombReflections)
+            {
+                if (sector[nHitSect].floorstat & 0x02)
+                {
+                    int wx = dword_15ADE8[nHitSect];
+                    int wy = dword_15BDE8[nHitSect];
+                    int wz = dword_15CDE8[nHitSect];
+                    int dot = tmulscale16(dx, wx, dy, wy, dz, wz);
+                    if (dot < 0)
+                        return;
+
+                    dx -= mulscale16(dot*2, wx);
+                    dy -= mulscale16(dot*2, wy);
+                    dz -= mulscale16(dot*2, wz);
+                }
+                else
+                    dz = -dz;
+                a8 -= mulscale16(a8, gLightBombAttenuation);
+                hx += dx >> 12;
+                hy += dy >> 12;
+                hz += dz >> 12;
+                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+            }
+        }
+    }
+    else
+    {
+        int t2 = divscale16(a8, ClipLow(t, 1));
+        if (t2 > 0)
+        {
+            t2 = divscale16(t2, ClipLow(dword_149DE8[nHitSect], 1));
+            int shade = (sector[nHitSect].ceilingshade <<16)+CeilShadeFrac[nHitSect]-t2;
+            sector[nHitSect].ceilingshade = ClipLow(shade>>16, gLightBombMaxBright);
+            CeilShadeFrac[nHitSect] = shade & 0xffff;
+            if (a9 < gLightBombReflections)
+            {
+                if (sector[nHitSect].ceilingstat & 0x02)
+                {
+                    int wx = dword_15DDE8[nHitSect];
+                    int wy = dword_15EDE8[nHitSect];
+                    int wz = dword_15FDE8[nHitSect];
+                    int dot = tmulscale16(dx, wx, dy, wy, dz, wz);
+                    if (dot < 0)
+                        return;
+
+                    dx -= mulscale16(dot*2, wx);
+                    dy -= mulscale16(dot*2, wy);
+                    dz -= mulscale16(dot*2, wz);
+                }
+                else
+                    dz = -dz;
+                a8 -= mulscale16(a8, gLightBombAttenuation);
+                hx += dx >> 12;
+                hy += dy >> 12;
+                hz += dz >> 12;
+                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+            }
+        }
+    }
+}
+
+int CalcSectorArea(sectortype* pSector)
+{
+    int nStartWall = pSector->wallptr;
+    int nEndWall = nStartWall + pSector->wallnum;
+    int nArea = 0;
+    for (int i = nStartWall; i < nEndWall; i++)
+    {
+        int x0 = wall[i].x >> 4;
+        int y0 = wall[i].y >> 4;
+        int x1 = wall[wall[i].point2].x >> 4;
+        int y1 = wall[wall[i].point2].y >> 4;
+
+        nArea += (x0+x1)*(y1-y0);
+    }
+
+    nArea >>= 1;
+    return nArea;
+}
+
+void ResetLightBomb()
+{
+    sectortype* pSector = sector;
+    for (int i = 0; i < numsectors; i++, pSector++)
+    {
+        FloorShadeFrac[i] = 0;
+        CeilShadeFrac[i] = 0;
+        dword_149DE8[i] = CalcSectorArea(pSector);
+        walltype* pWall = wall;
+        for (int j = pSector->wallptr; j < pSector->wallptr+pSector->wallnum; j++)
+        {
+            WallShadeFrac[j] = 0;
+            
+            int nx = (wall[pWall->point2].y-pWall->y)>>4;
+            int ny = (-(wall[pWall->point2].x-pWall->x))>>4;
+            int nLength = ksqrt(nx*nx+ny*ny);
+            dword_14ADE8[j] = divscale16(nx, nLength);
+            dword_152DE8[j] = divscale16(ny, nLength);
+            int ceilz0, florz0, ceilz1, florz1;
+            getzsofslope(i, pWall->x, pWall->y, &ceilz0, &florz0);
+            getzsofslope(i, wall[pWall->point2].x, wall[pWall->point2].y, &ceilz1, &florz1);
+            int ceil = (ceilz0+ceilz1)>>1;
+            int flor = (florz0+florz1)>>1;
+            int height = flor - ceil;
+            int nNextSector = pWall->nextsector;
+            if (nNextSector >= 0)
+            {
+                int v1c, v20, v24, v28;
+                height = 0;
+                getzsofslope(nNextSector, pWall->x, pWall->y, &v28, &v20);
+                getzsofslope(nNextSector, wall[pWall->point2].x, wall[pWall->point2].y, &v24, &v1c);
+                int ceiln = (v28+v24)>>1;
+                int florn = (v20+v1c)>>1;
+                if (florn < flor)
+                    height += flor-florn;
+                if (ceiln > ceil)
+                    height += ceiln-ceil;
+            }
+            WallArea[j] = (height*nLength)>>8;
+        }
+
+        dword_15ADE8[i] = 0;
+        dword_15BDE8[i] = 0;
+        dword_15CDE8[i] = -0x1000;
+        dword_15DDE8[i] = 0;
+        dword_15EDE8[i] = 0;
+        dword_15FDE8[i] = 0x1000;
+    }
+}
+
+void DoLightBomb(int x, int y, int z, short nSector)
+{
+    for (int i = 171; i <= 853; i += 85)
+    {
+        for (int j = 0; j < 2048; j += 8)
+        {
+            int dx = mulscale30(Cos(j), Sin(i)) >> 16;
+            int dy = mulscale30(Sin(j), Sin(i)) >> 16;
+            int dz = Cos(i) >> 16;
+
+            CalcLightBomb(x, y, z, nSector, dx, dy, dz, gLightBombIntensity, 0, 0);
+        }
+    }
+}
+
+void SetFirstWall(int nSector, int nWall)
+{
+    int start = sector[nSector].wallptr;
+    int length = sector[nSector].wallnum;
+    dassert(nWall >= start && nWall < start + length);
+    int n = nWall - start;
+    if (!n)
+        return;
+    walltype twall;
+    int j = start;
+    int k = start;
+    for (int i = length; i > 0; i--)
+    {
+        if (j == k)
+            twall = wall[k];
+
+        int t = n+j;
+        while (t >= start - length)
+            t -= length;
+        if (t == j)
+        {
+            wall[k] = twall;
+            k = ++j;
+        }
+        else
+        {
+            wall[k] = wall[t];
+            k = t;
+        }
+    }
+    for (int i = start; i < start+length; i++)
+    {
+        wall[i].point2 -= n;
+        if (wall[i].point2 < start)
+            wall[i].point2 += length;
+        if (wall[i].nextwall >= 0)
+            wall[wall[i].nextwall].nextwall = i;
+    }
+    sub_1058C();
+}
+
+void sub_22350()
+{
+    short nHitSect = -1;
+    short nHitWall = -1;
+    short nHitSprite = -1;
+    int hx, hy, hz;
+    int x = 0x4000;
+    int y = divscale(searchx-xdim/2, xdim/2, 14);
+    RotateVector(&x, &y, ang);
+    hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &nHitSect, &nHitWall, &nHitSprite, &hx, &hy, &hz, 0);
+    if (nHitWall == searchwall)
+        searchsector = wall[searchwall].nextsector;
+    else if (searchwall == wall[nHitSect].nextwall)
+        searchsector = wall[nHitWall].nextsector;
+    else
+        return;
+    if (getflorzofslope(searchsector, hx, hy) < hz)
+        searchstat = 2;
+    else
+        searchstat = 1;
+}
+
+int InsertMisc(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD07C[] = {
+        1072, 1074, 1076, 1070, 1078, 1048, 1046, 1127, 796,
+        266, 1069, 1142, 462, 739, 642, 2522, 2523, 2524, 2525,
+        2526, 2527, 2528, 2529, 650
+    };
+    int v4 = 0;
+    tileIndexCount = 24;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD07C[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type;
+    switch (vc)
+    {
+    case 650:
+        type = 32;
+        break;
+    case 1046:
+    case 1048:
+    case 1070:
+    case 1072:
+    case 1074:
+    case 1076:
+    case 1078:
+        type = 20;
+        break;
+    case 1127:
+        type = 408;
+        break;
+    case 796:
+        type = 407;
+        break;
+    case 266:
+        type = 406;
+        break;
+    case 1069:
+        type = 410;
+        break;
+    case 1142:
+        type = 409;
+        break;
+    case 462:
+        type = 405;
+        break;
+    case 739:
+        type = 403;
+        break;
+    case 642:
+        type = 404;
+        break;
+    // case 642:
+    //     type = 404;
+    //     break;
+    case 2522:
+    case 2523:
+    case 2524:
+    case 2525:
+    case 2526:
+    case 2527:
+    case 2528:
+    case 2529:
+        type = 1;
+        break;
+    }
+    int nSprite = InsertSprite(a2, v4);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+    sprite[nSprite].picnum = vc;
+    switch (vc)
+    {
+    case 1046:
+    case 1048:
+    case 1070:
+    case 1072:
+    case 1074:
+    case 1076:
+    case 1078:
+        sprite[nSprite].xrepeat = sprite[nSprite].yrepeat = 48;
+        break;
+    case 2522:
+    case 2523:
+    case 2524:
+    case 2525:
+    case 2526:
+    case 2527:
+    case 2528:
+    case 2529:
+    {
+        int nXSprite = sub_10E50(nSprite);
+        dassert(nXSprite > 0 && nXSprite < kMaxXSprites);
+        xsprite[nXSprite].data1 = vc - 2522;
+        break;
+    }
+    }
+
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertHazard(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD0AC[9] = {
+        655, 3444, 907, 968, 1080, 835, 1156, 2178, 908
+    };
+    int v4 = 0;
+    tileIndexCount = 9;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD0AC[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type;
+    switch (vc)
+    {
+    case 655:
+        vc = 454;
+        break;
+    case 3444:
+        vc = 401;
+        break;
+    case 907:
+        vc = 400;
+        break;
+    case 968:
+        vc = 450;
+        break;
+    case 1080:
+        vc = 457;
+        break;
+    case 835:
+        vc = 458;
+        break;
+    case 1156:
+        vc = 456;
+        break;
+    case 2178:
+        vc = 413;
+        break;
+    case 908:
+        vc = 459;
+        break;
+    default:
+        scrSetMessage("Invalid hazard tile selected!");
+        Beep();
+        return -1;
+    }
+    int nSprite = InsertSprite(a2, v4);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertItem(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD0BE[] = {
+        2552, 2553, 2554, 2555, 2556, 2557, 519, 2169, 2433,
+        896, 825, 827, 829, 830, 760, 2428, 839, 840, 841, 842,
+        843, 518, 522, 523, 837, 2628, 2586, 2578, 2602, 2594
+    };
+    tileIndexCount = 30;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD0BE[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type = -1;
+    switch (vc)
+    {
+    case 2552:
+        type = 100;
+        break;
+    case 2553:
+        type = 101;
+        break;
+    case 2554:
+        type = 102;
+        break;
+    case 2555:
+        type = 103;
+        break;
+    case 2556:
+        type = 104;
+        break;
+    case 2557:
+        type = 105;
+        break;
+    case 519:
+        type = 107;
+        break;
+    case 822:
+        type = 108;
+        break;
+    case 2169:
+        type = 109;
+        break;
+    case 2433:
+        type = 110;
+        break;
+    case 517:
+        type = 111;
+        break;
+    case 783:
+        type = 112;
+        break;
+    case 896:
+        type = 113;
+        break;
+    case 825:
+        type = 114;
+        break;
+    case 827:
+        type = 115;
+        break;
+    case 828:
+        type = 116;
+        break;
+    case 829:
+        type = 117;
+        break;
+    case 830:
+        type = 118;
+        break;
+    case 831:
+        type = 119;
+        break;
+    case 863:
+        type = 120;
+        break;
+    //case 863:
+    //    type = 120;
+    //    break;
+    case 760:
+        type = 121;
+        break;
+    case 836:
+        type = 122;
+        break;
+    case 851:
+        type = 123;
+        break;
+    case 2428:
+        type = 124;
+        break;
+    case 839:
+        type = 125;
+        break;
+    case 768:
+        type = 126;
+        break;
+    case 840:
+        type = 127;
+        break;
+    case 841:
+        type = 128;
+        break;
+    case 842:
+        type = 129;
+        break;
+    case 843:
+        type = 130;
+        break;
+    //case 843:
+    //    type = 130;
+    //    break;
+    case 683:
+        type = 131;
+        break;
+    case 521:
+        type = 132;
+        break;
+    case 604:
+        type = 133;
+        break;
+    //case 604:
+    //    type = 133;
+    //    break;
+    case 520:
+        type = 134;
+        break;
+    case 803:
+        type = 135;
+        break;
+    case 518:
+        type = 136;
+        break;
+    case 522:
+        type = 137;
+        break;
+    case 523:
+        type = 138;
+        break;
+    case 837:
+        type = 139;
+        break;
+    case 2628:
+        type = 140;
+        break;
+    case 2586:
+        type = 141;
+        break;
+    case 2578:
+        type = 142;
+        break;
+    case 2602:
+        type = 143;
+        break;
+    case 2594:
+        type = 144;
+        break;
+    default:
+        scrSetMessage("Invalid item tile selected!");
+        Beep();
+        return -1;
+    }
+    int nSprite = InsertSprite(a2, 3);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertAmmo(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD0FA[] = {
+        548, 820, 589, 618, 619, 809, 810, 811, 812, 813, 817, 816, 801, 525
+    };
+    tileIndexCount = 14;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD0FA[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type = -1;
+    switch (vc)
+    {
+    case 548:
+        type = 73;
+        break;
+    case 820:
+        type = 66;
+        break;
+    case 589:
+        type = 62;
+        break;
+    case 618:
+        type = 60;
+        break;
+    case 619:
+        type = 67;
+        break;
+    case 809:
+        type = 63;
+        break;
+    //case 809:
+    //    type = 63;
+    //    break;
+    case 810:
+        type = 65;
+        break;
+    case 811:
+        type = 64;
+        break;
+    case 812:
+        type = 68;
+        break;
+    case 813:
+        type = 69;
+        break;
+    case 817:
+        type = 72;
+        break;
+    case 816:
+        type = 76;
+        break;
+    case 801:
+        type = 79;
+        break;
+    case 525:
+        type = 70;
+        break;
+    default:
+        scrSetMessage("Invalid ammo tile selected!");
+        Beep();
+        return -1;
+    }
+    int nSprite = InsertSprite(a2, 3);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertWeapon(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD116[9] = {
+        524, 559, 558, 526, 589, 618, 539, 800, 525
+    };
+    int v4 = 0;
+    tileIndexCount = 9;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD116[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type;
+    switch (vc)
+    {
+    case 524:
+        type = 43;
+        break;
+    case 559:
+        type = 41;
+        break;
+    case 558:
+        type = 42;
+        break;
+    case 526:
+        type = 46;
+        break;
+    case 589:
+        type = 62;
+        break;
+    case 618:
+        type = 60;
+        break;
+    case 539:
+        type = 45;
+        break;
+    case 800:
+        type = 50;
+        break;
+    case 525:
+        type = 70;
+        break;
+    default:
+        scrSetMessage("Invalid weapon tile selected!");
+        Beep();
+        return -1;
+    }
+    int nSprite = InsertSprite(a2, 3);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertEnemy(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    short word_CD128[27] = {
+        2860, 2825, 3385, 1170, 3054, 1370, 1209, 1470, 1530,
+        3060, 1270, 1980, 1920, 1925, 1930, 1935, 1570, 1870,
+        1950, 1745, 1792, 1797, 2680, 3140, 3798, 3870, 2960
+    };
+    tileIndexCount = 27;
+    for (int i = 0; i < tileIndexCount; i++)
+    {
+        tileIndex[i] = word_CD128[i];
+    }
+    int vc = tilePick(-1, -1, -2);
+    if (vc == -1)
+        return -1;
+    int type = -1;
+    switch (vc)
+    {
+    case 2860:
+        type = 201;
+        break;
+    case 3385:
+        type = 230;
+        break;
+    case 2825:
+        type = 202;
+        break;
+    case 1170:
+        type = 203;
+        break;
+    case 1209:
+        type = 244;
+        break;
+    case 3054:
+        type = 205;
+        break;
+    case 1370:
+        type = 204;
+        break;
+    case 1470:
+        type = 206;
+        break;
+    case 1530:
+        type = 208;
+        break;
+    case 3060:
+        type = 210;
+        break;
+    case 1270:
+        type = 211;
+        break;
+    case 1980:
+        type = 212;
+        break;
+    case 1920:
+        type = 213;
+        break;
+    case 1925:
+        type = 214;
+        break;
+    case 1930:
+        type = 215;
+        break;
+    case 1935:
+        type = 216;
+        break;
+    //case 1935:
+    //    type = 216;
+    //    break;
+    case 1570:
+        type = 217;
+        break;
+    case 1870:
+        type = 218;
+        break;
+    case 1950:
+        type = 219;
+        break;
+    case 1745:
+        type = 220;
+        break;
+    case 1792:
+        type = 221;
+        break;
+    case 1797:
+        type = 222;
+        break;
+    case 2680:
+        type = 227;
+        break;
+    case 832:
+        type = 200;
+        break;
+    case 3140:
+        type = 229;
+        break;
+    case 3798:
+        type = 245;
+        break;
+    case 3870:
+        type = 250;
+        break;
+    case 2960:
+        type = 251;
+        break;
+    default:
+        scrSetMessage("Invalid dude tile selected!");
+        Beep();
+        return -1;
+    }
+    int nSprite = InsertSprite(a2, 6);
+    dassert(nSprite >= 0 && nSprite < kMaxSprites);
+    sprite[nSprite].type = type;
+    sub_10EA0();
+    spritetype* pSprite = &sprite[nSprite];
+    pSprite->shade = -8;
+    pSprite->x = a3;
+    pSprite->y = a4;
+    pSprite->z = a5;
+    pSprite->ang = a6;
+
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    if (a1 == 2)
+        pSprite->z += getflorzofslope(a2, pSprite->x, pSprite->y)-bottom;
+    else
+        pSprite->z += getceilzofslope(a2, pSprite->x, pSprite->y)-top;
+    updatenumsprites();
+    int nXSprite = sub_10E50(nSprite);
+    dassert(nXSprite > 0 && nXSprite < kMaxXSprites);
+    switch (type)
+    {
+    case 213:
+    case 214:
+    case 215:
+    case 216:
+        if (a1 == 1 && !(sector[a2].ceilingstat & 0x01))
+            pSprite->cstat |= 0x08;
+        break;
+    case 219:
+        if (a1 == 1 && !(sector[a2].ceilingstat & 0x01))
+            pSprite->picnum = 1948;
+        else
+            xsprite[nXSprite].state = 1;
+        break;
+    }
+    ModifyBeep();
+    return nSprite;
+}
+
+int InsertObject(int a1, int a2, int a3, int a4, int a5, int a6)
+{
+    Win window(0, 0, 80, 182, "Insert");
+
+    TextButton* pEnemy = new TextButton(4, 4, 60, 20, "&Enemy", (MODAL_RESULT)8);
+    TextButton* pWeapon = new TextButton(4, 26, 60, 20, "&Weapon", (MODAL_RESULT)9);
+    TextButton* pAmmo = new TextButton(4, 48, 60, 20, "&Ammo", (MODAL_RESULT)10);
+    TextButton* pItem = new TextButton(4, 70, 60, 20, "&Item", (MODAL_RESULT)11);
+    TextButton* pHazard = new TextButton(4, 92, 60, 20, "&Hazard", (MODAL_RESULT)12);
+    TextButton* pMisc = new TextButton(4, 114, 60, 20, "&Misc", (MODAL_RESULT)13);
+    TextButton* pCancel = new TextButton(4, 136, 60, 20, "&Cancel", MODAL_RESULT_2);
+
+    window.at5e->Insert(pEnemy);
+    window.at5e->Insert(pWeapon);
+    window.at5e->Insert(pAmmo);
+    window.at5e->Insert(pItem);
+    window.at5e->Insert(pHazard);
+    window.at5e->Insert(pMisc);
+    window.at5e->Insert(pCancel);
+
+    ShowModal(&window);
+
+    switch (window.at25)
+    {
+    case 8:
+        return InsertEnemy(a1, a2, a3, a4, a5, a6);
+    case 9:
+        return InsertWeapon(a1, a2, a3, a4, a5, a6);
+    case 10:
+        return InsertAmmo(a1, a2, a3, a4, a5, a6);
+    case 11:
+        return InsertItem(a1, a2, a3, a4, a5, a6);
+    case 12:
+        return InsertHazard(a1, a2, a3, a4, a5, a6);
+    case 13:
+        return InsertMisc(a1, a2, a3, a4, a5, a6);
+    case MODAL_RESULT_2:
+        return -1;
+    }
+    return -1;
+}
+
+unsigned char CompareXSectors(XSECTOR *pXSector1, XSECTOR *pXSector2)
+{
+    return memcmp(pXSector1, pXSector2, sizeof(XSECTOR)) == 0;
+}
+
+unsigned char ConfirmYesNo(const char *a1)
+{
+    Win window(59, 80, 202, 46, a1);
+
+    TextButton* pYes = new TextButton(4, 4, 60, 20, "&Yes", (MODAL_RESULT)6);
+    window.at5e->Insert(pYes);
+
+    TextButton* pNo = new TextButton(68, 4, 60, 20, "&No", (MODAL_RESULT)7);
+    window.at5e->Insert(pNo);
+
+    ShowModal(&window);
+
+    return window.at25 == (MODAL_RESULT)6;
+}
+
+unsigned char ShowOptions(void)
+{
+    Win window(0, 0, 80, 182, "Options");
+
+    TextButton* pClean = new TextButton(4, 4, 60, 20, "C&lean", (MODAL_RESULT)8);
+
+    TextButton* pCancel = new TextButton(136, 4, 60, 20, "&Cancel", MODAL_RESULT_2);
+    window.at5e->Insert(pClean);
+    window.at5e->Insert(pCancel);
+
+    ShowModal(&window);
+
+    switch (window.at25)
+    {
+    case 8:
+    {
+        XSECTOR v64;
+        if (somethingintab == 2)
+        {
+            int nXSector = sector[searchsector].extra;
+            if (nXSector >= 0)
+            {
+                if (xsector[nXSector].reference == searchsector)
+                    v64 = xsector[nXSector];
+            }
+        }
+        int vdi = 1;
+        for (int i = 0; i < kMaxXSectors; i++)
+        {
+            int nSector = xsector[i].reference;
+            if (nSector != -1 && sector[nSector].extra == i && nSector != searchsector)
+            {
+                v64.reference = xsector[i].reference;
+                if (CompareXSectors(&v64, &xsector[i]))
+                    vdi++;
+            }
+        }
+        char buffer[40];
+        sprintf(buffer, "Clean %i common sectors?", vdi);
+        if (ConfirmYesNo(buffer))
+        {
+            for (int i = 0; i < kMaxXSectors; i++)
+            {
+                int nSector = xsector[i].reference;
+                if (nSector != -1 && sector[nSector].extra == i)
+                {
+                    v64.reference = xsector[i].reference;
+                    if (CompareXSectors(&v64, &xsector[i]))
+                        dbDeleteXSector(i);
+                }
+            }
+        }
+        InitSectorFX();
+        break;
+    }
+    case MODAL_RESULT_2:
+        return 0;
+    }
+    return 1;
+}
+
+void sub_258B0(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    visited[a2] = 1;
+    for (int i = 0; i < sector[i].wallnum; i++)
+    {
+        int nNextSector = wall[sector[i].wallptr + i].nextsector;
+        if (nNextSector != -1 && IsSectorHighlight(nNextSector) && !visited[nNextSector])
+        {
+            int nXSector = sector[i].extra;
+            if (nXSector > 0)
+            {
+                dassert(nXSector < kMaxXSectors);
+                XSECTOR* pXSector = &xsector[nXSector];
+                SetSectorLightingPhase(nNextSector, (pXSector->phase + a2) & 2047);
+                sub_258B0(nNextSector, a2);
+            }
+        }
+    }
+}
+
+void sub_259F0(int nSector, int a2)
+{
+    dassert(nSector >= 0 && nSector < kMaxSectors);
+    visited[a2] = 1;
+    for (int i = 0; i < sector[i].wallnum; i++)
+    {
+        int nNextSector = wall[sector[i].wallptr + i].nextsector;
+        if (nNextSector != -1 && IsSectorHighlight(nNextSector) && !visited[nNextSector])
+        {
+            int nXSector = sector[i].extra;
+            if (nXSector > 0)
+            {
+                dassert(nXSector < kMaxXSectors);
+                XSECTOR* pXSector = &xsector[nXSector];
+                SetSectorMotionTheta(nNextSector, (pXSector->bobTheta + a2) & 2047);
+                sub_259F0(nNextSector, a2);
+            }
+        }
+    }
+}
+
+char ShowSectorTricks(void)
+{
+    char v4 = 0;
+    Win window(0, 0, 180, 182, "Sector Tricks");
+
+    Label* pValue = new Label(4, 8, "&Value:");
+    window.at5e->Insert(pValue);
+
+    EditNumber* pEdit = new EditNumber(44, 4, 80, 16, 0);
+    pEdit->at1f = 'V';
+    window.at5e->Insert(pEdit);
+
+    TextButton* pSH = new TextButton(4, 24, 80, 20, "&Step Height", (MODAL_RESULT)8);
+    window.at5e->Insert(pSH);
+
+    TextButton* pLH = new TextButton(4, 44, 80, 20, "&Light Phase", (MODAL_RESULT)9);
+    window.at5e->Insert(pLH);
+
+    TextButton* pZP = new TextButton(4, 64, 80, 20, "&Z Phase", (MODAL_RESULT)10);
+    window.at5e->Insert(pZP);
+
+    ShowModal(&window);
+
+    switch (window.at25)
+    {
+    case 8:
+        switch (searchstat)
+        {
+        case 2:
+            memset(visited, 0, sizeof(visited));
+            sub_216F8(searchsector, pEdit->at130);
+            v4 = 1;
+            break;
+        case 1:
+            memset(visited, 0, sizeof(visited));
+            sub_21798(searchsector, pEdit->at130);
+            v4 = 1;
+            break;
+        }
+        break;
+    case 9:
+        memset(visited, 0, sizeof(visited));
+        v4 = 1;
+        sub_258B0(searchsector, pEdit->at130);
+        break;
+    case 10:
+        memset(visited, 0, sizeof(visited));
+        sub_259F0(searchsector, pEdit->at130);
+        v4 = 1;
+        break;
+    }
+    return v4;
+}
+
+void SetSkyTile(int nTile)
+{
+    dassert(nTile >= 0 && nTile < kMaxTiles);
+
+    pskybits = 10 - (picsiz[nTile] & 15);
+    gSkyCount = 1 << pskybits;
+
+    sector[searchsector].ceilingpicnum = nTile;
+
+    for (int i = 0; i < gSkyCount; i++)
+        pskyoff[i] = i;
+
+    for (int i = 0; i < numsectors; i++)
+    {
+        if (sector[i].ceilingstat & 1)
+            sector[i].ceilingpicnum = nTile;
+        if (sector[i].floorstat & 1)
+            sector[i].floorpicnum = nTile;
+    }
+}
+
+void sub_25E64(spritetype* pSprite, int a2)
+{
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    pSprite->z += getceilzofslope(pSprite->sectnum, pSprite->x, pSprite->y) - top;
+}
+
+void sub_25EF8(spritetype* pSprite, int a2)
+{
+    int top, bottom;
+    GetSpriteExtents(pSprite, &top, &bottom);
+    pSprite->z += getflorzofslope(pSprite->sectnum, pSprite->x, pSprite->y) - bottom;
+}
+
+void sub_25F8C(spritetype* pSprite, int a2)
+{
+    pSprite->z = (pSprite->z-1)&(~(a2-1));
+}
+
+void sub_25F9C(spritetype* pSprite, int a2)
+{
+    pSprite->z = (pSprite->z+a2)&(~(a2-1));
+}
+
+void OperateSprites(void (*a1)(spritetype *, int), int a2)
+{
+    if (TestBitString(show2dsprite, searchwall))
+    {
+        for (int i = 0; i < highlightcnt; i++)
+        {
+            if ((highlight[i] & 0xc000) == 0x4000)
+            {
+                a1(&sprite[highlight[i]&0x3fff], a2);
+            }
+        }
+    }
+    else
+        a1(&sprite[searchwall], a2);
+}
+
+void sub_26054(int nSector, int a2)
+{
+    SetSectorCeilZ(nSector, sector[nSector].ceilingz + a2);
+}
+
+void sub_26074(int nSector, int a2)
+{
+    SetSectorFloorZ(nSector, sector[nSector].floorz + a2);
+}
+
+void sub_26094(int nSector, int a2)
+{
+    SetSectorCeilZ(nSector, (sector[nSector].ceilingz-1)&(~(a2-1)));
+}
+
+void sub_260B8(int nSector, int a2)
+{
+    SetSectorFloorZ(nSector, (sector[nSector].floorz-1)&(~(a2-1)));
+}
+
+void sub_260DC(int nSector, int a2)
+{
+    SetSectorCeilZ(nSector, (sector[nSector].ceilingz+a2)&(~(a2-1)));
+}
+
+void sub_260FC(int nSector, int a2)
+{
+    SetSectorFloorZ(nSector, (sector[nSector].floorz+a2)&(~(a2-1)));
+}
+
+void sub_2611C(int nSector, int a2)
+{
+    int nXSector = sector[nSector].extra;
+    if (nXSector > 0)
+    {
+        xsector[nXSector].wave = a2;
+    }
+}
+
+void OperateSectors(void (*a1)(int, int), int a2)
+{
+    if (IsSectorHighlight(searchsector))
+    {
+        for (int i = 0; i < highlightcnt; i++)
+        {
+            a1(highlightsector[i], a2);
+        }
+    }
+    else
+        a1(searchsector, a2);
+}
+
+int dword_D9A80 = 0;
+int dword_13ADE4;
+short temptype, tempang;
+char tempvis2;
+
+short word_CA89C = 1;
+short word_CA8A0 = 1;
+
+void Check3DKeys(void)
+{
+    static char buffer[256];
+    char shift = keystatus[sc_LeftShift] | keystatus[sc_RightShift];
+    char ctrl = keystatus[sc_LeftControl] | keystatus[sc_RightControl];
+    char alt = keystatus[sc_LeftAlt] | keystatus[sc_RightAlt];
+    char kp5 = keystatus[sc_kpad_5];
+    if (ctrl && kp5)
+        horiz = 100;
+
+    if (angvel)
+    {
+        int v = gFrameTicks;
+        if (shift)
+            v += v / 2;
+        ang = (ang + ((v * angvel) >> 4)) & 2047;
+    }
+
+    if (vel | svel)
+    {
+        int v = gFrameTicks;
+        if (shift)
+            v <<= 1;
+        int dx = 0, dy = 0;
+        if (vel)
+        {
+            dx += mulscale30((vel * v) >> 2, Cos(ang));
+            dy += mulscale30((vel * v) >> 2, Sin(ang));
+        }
+        if (svel)
+        {
+            dx += mulscale30((svel * v) >> 2, Sin(ang));
+            dy -= mulscale30((svel * v) >> 2, Cos(ang));
+        }
+        clipmove(&posx, &posy, &posz, &cursectnum, dx<<14, dy<<14, 200, 1024, 1024, 0);
+    }
+    int ceilz, ceilhit, florz, florhit;
+    getzrange(posx, posy, posz, cursectnum, &ceilz, &ceilhit, &florz, &florhit, 200, 0x10001);
+
+    if ((ceilhit & 0xe000) == 0x4000 & (ceilhit & 0x1fff) == cursectnum && (sector[cursectnum].ceilingstat & 1))
+        ceilz = (int)0x80000000;
+
+    if (zmode == 0)
+    {
+        int z = florz - kensplayerheight;
+        if (z < ceilz + 0x1000)
+            z = (florz + ceilz) / 2;
+        if (keystatus[sc_A])
+        {
+            if (ctrl)
+            {
+                if (horiz > 0)
+                    horiz -= 4;
+            }
+            else
+            {
+                z -= 0x1000;
+                if (shift)
+                    z -= 0x1800;
+            }
+        }
+        if (keystatus[sc_Z])
+        {
+            if (ctrl)
+            {
+                if (horiz < 200)
+                    horiz += 4;
+            }
+            else
+            {
+                z += 0xc00;
+                if (shift)
+                    z += 0xc00;
+            }
+        }
+        if (z != posz)
+        {
+            if (z > posz)
+                dword_13ADE4 += 32;
+            if (z < posz)
+                dword_13ADE4 = (z-posz)>>3;
+            posz += dword_13ADE4;
+            if (florz - 0x400 < posz)
+            {
+                posz = florz - 0x400;
+                dword_13ADE4 = 0;
+            }
+            if (ceilz + 0x400 > posz)
+            {
+                posz = ceilz + 0x400;
+                dword_13ADE4 = 0;
+            }
+        }
+    }
+    else
+    {
+        int z = posz;
+        if (keystatus[sc_A])
+        {
+            if (keystatus[sc_LeftControl])
+            {
+                if (horiz > 0)
+                    horiz -= 4;
+            }
+            else if (zmode != 1)
+            {
+                z -= 0x800;
+            }
+            else
+            {
+                zlock += 0x400;
+                keystatus[sc_A] = 0;
+            }
+        }
+        if (keystatus[sc_Z])
+        {
+            if (keystatus[sc_LeftControl])
+            {
+                if (horiz < 200)
+                    horiz += 4;
+            }
+            else if (zmode != 1)
+            {
+                z += 0x800;
+            }
+            else if (zlock > 0)
+            {
+                zlock -= 0x400;
+                keystatus[sc_Z] = 0;
+            }
+        }
+
+        if (z < ceilz + 0x400)
+            z = ceilz + 0x400;
+        if (z > florz - 0x400)
+            z = florz - 0x400;
+        if (zmode == 1)
+            z = florz - zlock;
+        if (z < ceilz + 0x400)
+            z = (florz + ceilz) / 2;
+        if (zmode == 1)
+            posz = z;
+        if (z != posz)
+        {
+            if (z > posz)
+                dword_13ADE4 += 32;
+            if (z < posz)
+                dword_13ADE4 -= 32;
+            posz += dword_13ADE4;
+            if (florz - 0x400 < posz)
+            {
+                posz = florz - 0x400;
+                dword_13ADE4 = 0;
+            }
+            if (ceilz + 0x400 > posz)
+            {
+                posz = ceilz + 0x400;
+                dword_13ADE4 = 0;
+            }
+        }
+        else
+            dword_13ADE4 = 0;
+    }
+    // Mouse::Read(gFrameTicks);
+    int mouseX, mouseY;
+    MouseClamp();
+    mouseX = mousex;
+    mouseY = mousey;
+
+    searchx = ClipRange(mouseX, 1, xdim-2);
+    searchy = ClipRange(mouseY, 1, ydim-2);
+
+    searchit = 2;
+
+    int mouseButtons;
+    readmousebstatus(&mouseButtons);
+
+    if (searchstat >= 0 && (mouseButtons&1))
+        searchit = 0;
+
+    gColor = gStdColor[23+Sin((gFrameClock<<11)/120)];
+    gfxHLine(searchy, searchx - 6, searchx - 2);
+    gfxHLine(searchy, searchx + 2, searchx + 6);
+    gfxVLine(searchx, searchy - 5, searchy - 2);
+    gfxVLine(searchx, searchy + 2, searchy + 5);
+
+    if (searchstat < 0)
+        return;
+
+    unsigned char key = keyGetScan();
+    switch (key)
+    {
+    case sc_PgUp:
+    {
+        int vdi = 0x400;
+        if (shift)
+            vdi = 0x100;
+        if (searchstat == 0)
+        {
+            int nNextSector = wall[searchwall].nextsector;
+            if (nNextSector != -1)
+                sub_22350();
+        }
+        if (searchstat == 0)
+            searchstat = 1;
+        if (ctrl)
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                int vd = nextsectorneighborz(searchsector, sector[searchsector].ceilingz, -1, -1);
+                if (vd == -1)
+                    vd = searchsector;
+                OperateSectors(SetSectorCeilZ, sector[vd].ceilingz);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                int vd = nextsectorneighborz(searchsector, sector[searchsector].floorz, 1, -1);
+                if (vd == -1)
+                    vd = searchsector;
+                OperateSectors(SetSectorFloorZ, sector[vd].floorz);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 3:
+                OperateSprites(sub_25E64, 0);
+                sprintf(buffer, "sprite[%i].z: %i", searchwall, sprite[searchwall].z);
+                scrSetMessage(buffer);
+                break;
+            }
+        }
+        else if (alt)
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                int vd = (sector[searchsector].floorz - sector[searchsector].ceilingz) / 256;
+                vd = GetNumberBox("height off floor", vd, vd);
+                OperateSectors(sub_26054, (sector[searchsector].floorz - vd * 256) - sector[searchsector].ceilingz);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                int vd = (sector[searchsector].floorz - sector[searchsector].ceilingz) / 256;
+                vd = GetNumberBox("height off ceiling", vd, vd);
+                OperateSectors(sub_26074, (sector[searchsector].ceilingz + vd * 256) - sector[searchsector].floorz);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                OperateSectors(sub_26094, vdi);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                OperateSectors(sub_260B8, vdi);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 3:
+                OperateSprites(sub_25F8C, vdi);
+                sprintf(buffer, "sprite[%i].z: %i", searchwall, sprite[searchwall].z);
+                scrSetMessage(buffer);
+                break;
+            }
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_PgDn:
+    {
+        int vdi = 0x400;
+        if (shift)
+            vdi = 0x100;
+        if (searchstat == 0)
+        {
+            int nNextSector = wall[searchwall].nextsector;
+            if (nNextSector != -1)
+                sub_22350();
+        }
+        if (searchstat == 0)
+            searchstat = 1;
+        if (ctrl)
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                int vd = nextsectorneighborz(searchsector, sector[searchsector].ceilingz, -1, 1);
+                if (vd == -1)
+                    vd = searchsector;
+                OperateSectors(SetSectorCeilZ, sector[vd].ceilingz);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                int vd = nextsectorneighborz(searchsector, sector[searchsector].floorz, 1, 1);
+                if (vd == -1)
+                    vd = searchsector;
+                OperateSectors(SetSectorFloorZ, sector[vd].floorz);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 3:
+                OperateSprites(sub_25EF8, 0);
+                sprintf(buffer, "sprite[%i].z: %i", searchwall, sprite[searchwall].z);
+                scrSetMessage(buffer);
+                break;
+            }
+        }
+        else if (alt)
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                int vd = (sector[searchsector].floorz - sector[searchsector].ceilingz) / 256;
+                vd = GetNumberBox("height off floor", vd, vd);
+                OperateSectors(sub_26054, (sector[searchsector].floorz - vd * 256) - sector[searchsector].ceilingz);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                int vd = (sector[searchsector].floorz - sector[searchsector].ceilingz) / 256;
+                vd = GetNumberBox("height off ceiling", vd, vd);
+                OperateSectors(sub_26074, (sector[searchsector].ceilingz + vd * 256) - sector[searchsector].floorz);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 1:
+            {
+                OperateSectors(sub_260DC, vdi);
+                sprintf(buffer, "sector[%i].ceilingz: %i", searchsector, sector[searchsector].ceilingz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 2:
+            {
+                OperateSectors(sub_260FC, vdi);
+                sprintf(buffer, "sector[%i].floorz: %i", searchsector, sector[searchsector].floorz);
+                scrSetMessage(buffer);
+                break;
+            }
+            case 3:
+                OperateSprites(sub_25F9C, vdi);
+                sprintf(buffer, "sprite[%i].z: %i", searchwall, sprite[searchwall].z);
+                scrSetMessage(buffer);
+                break;
+            }
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_Delete:
+        if (searchstat == 3)
+        {
+            DeleteSprite(searchwall);
+            updatenumsprites();
+            ModifyBeep();
+        }
+        else
+            Beep();
+        break;
+    case sc_Tab:
+        switch (searchstat)
+        {
+        case 0:
+            temppicnum = wall[searchwall].picnum;
+            tempshade = wall[searchwall].shade;
+            temppal = wall[searchwall].pal;
+            tempxrepeat = wall[searchwall].xrepeat;
+            tempyrepeat = wall[searchwall].yrepeat;
+            tempcstat = wall[searchwall].cstat;
+            tempextra = wall[searchwall].extra;
+            temptype = wall[searchwall].lotag;
+            break;
+        case 1:
+            temppicnum = sector[searchsector].ceilingpicnum;
+            tempshade = sector[searchsector].ceilingshade;
+            temppal = sector[searchsector].ceilingpal;
+            tempxrepeat = sector[searchsector].ceilingxpanning;
+            tempyrepeat = sector[searchsector].ceilingypanning;
+            tempcstat = sector[searchsector].ceilingstat;
+            tempextra = sector[searchsector].extra;
+            tempvis2 = sector[searchsector].visibility;
+            temptype = sector[searchsector].lotag;
+            break;
+        case 2:
+            temppicnum = sector[searchsector].floorpicnum;
+            tempshade = sector[searchsector].floorshade;
+            temppal = sector[searchsector].floorpal;
+            tempxrepeat = sector[searchsector].floorxpanning;
+            tempyrepeat = sector[searchsector].floorypanning;
+            tempcstat = sector[searchsector].floorstat;
+            tempextra = sector[searchsector].extra;
+            tempvis2 = sector[searchsector].visibility;
+            temptype = sector[searchsector].lotag;
+            break;
+        case 3:
+            temppicnum = sprite[searchwall].picnum;
+            tempshade = sprite[searchwall].shade;
+            temppal = sprite[searchwall].pal;
+            tempxrepeat = sprite[searchwall].xrepeat;
+            tempyrepeat = sprite[searchwall].yrepeat;
+            tempcstat = sprite[searchwall].cstat;
+            tempextra = sprite[searchwall].extra;
+            tempang = sprite[searchwall].ang;
+            temptype = sprite[searchwall].type;
+            break;
+        case 4:
+            temppicnum = wall[searchwall].overpicnum;
+            tempshade = wall[searchwall].shade;
+            temppal = wall[searchwall].pal;
+            tempxrepeat = wall[searchwall].xrepeat;
+            tempyrepeat = wall[searchwall].yrepeat;
+            tempcstat = wall[searchwall].cstat;
+            tempextra = wall[searchwall].extra;
+            temptype = wall[searchwall].lotag;
+            break;
+        }
+        somethingintab = searchstat;
+        break;
+    case sc_CapsLock:
+    {
+        static const char* pzZMode[] = {
+            "Gravity",
+            "Locked/Step",
+            "Locked/Free"
+        };
+        zmode++;
+        if (zmode >= 3)
+            zmode = 0;
+        if (zmode == 1)
+            zlock = (florz-posz)&~0x3ff;
+        sprintf(buffer, "ZMode = %s", pzZMode[zmode]);
+        scrSetMessage(buffer);
+        break;
+    }
+    case sc_Enter:
+        if (somethingintab == 0)
+        {
+            Beep();
+            break;
+        }
+        if (ctrl)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+            {
+                int i = searchwall;
+                do
+                {
+                    if (shift)
+                    {
+                        wall[i].shade = tempshade;
+                        wall[i].pal = temppal;
+                    }
+                    else
+                    {
+                        wall[i].picnum = temppicnum;
+                        if (somethingintab == 0 || somethingintab == 4)
+                        {
+                            wall[i].xrepeat = tempxrepeat;
+                            wall[i].yrepeat = tempyrepeat;
+                            wall[i].cstat = tempcstat;
+                        }
+                        fixrepeats(i);
+                    }
+                    i = wall[i].point2;
+                } while (i != searchwall);
+                ModifyBeep();
+                break;
+            }
+            case 1:
+            {
+                for (int i = 0; i < numsectors; i++)
+                {
+                    if (sector[i].ceilingstat & 1)
+                    {
+                        sector[i].ceilingpicnum = temppicnum;
+                        sector[i].ceilingshade = tempshade;
+                        sector[i].ceilingpal = temppal;
+                        if (somethingintab == 1 || somethingintab == 2)
+                        {
+                            sector[i].ceilingxpanning = tempxrepeat;
+                            sector[i].ceilingypanning = tempyrepeat;
+                            sector[i].ceilingstat = tempcstat|1;
+                        }
+                    }
+                }
+                ModifyBeep();
+                break;
+            }
+            case 2:
+            {
+                for (int i = 0; i < numsectors; i++)
+                {
+                    if (sector[i].floorstat & 1)
+                    {
+                        sector[i].floorpicnum = temppicnum;
+                        sector[i].floorshade = tempshade;
+                        sector[i].floorpal = temppal;
+                        if (somethingintab == 1 || somethingintab == 2)
+                        {
+                            sector[i].floorxpanning = tempxrepeat;
+                            sector[i].floorypanning = tempyrepeat;
+                            sector[i].floorstat = tempcstat|1;
+                        }
+                    }
+                }
+                ModifyBeep();
+                break;
+            }
+            default:
+                Beep();
+                break;
+            }
+        }
+        else if (shift)
+        {
+            switch (searchstat)
+            {
+            case 0:
+                wall[searchwall].shade = tempshade;
+                wall[searchwall].pal = temppal;
+                break;
+            case 1:
+                if (IsSectorHighlight(searchsector))
+                {
+                    for (int i = 0; i < highlightsectorcnt; i++)
+                    {
+                        // FIXED: was using i as sector number
+                        int nSector = highlightsector[i];
+                        sector[nSector].ceilingshade = tempshade;
+                        sector[nSector].ceilingpal = temppal;
+                        sector[nSector].visibility = tempvis2;
+                    }
+                }
+                else
+                {
+                    sector[searchsector].ceilingshade = tempshade;
+                    sector[searchsector].ceilingpal = temppal;
+                    sector[searchsector].visibility = tempvis2;
+                    if (sector[searchsector].ceilingstat & 1)
+                    {
+                        for (int i = 0; i < numsectors; i++)
+                        {
+                            if (sector[i].ceilingstat & 1)
+                            {
+                                sector[i].ceilingshade = tempshade;
+                                sector[i].ceilingpal = temppal;
+                                sector[i].visibility = tempvis2;
+                            }
+                        }
+                    }
+                }
+                break;
+            case 2:
+                if (IsSectorHighlight(searchsector))
+                {
+                    for (int i = 0; i < highlightsectorcnt; i++)
+                    {
+                        // FIXED: was using i as sector number
+                        int nSector = highlightsector[i];
+                        sector[nSector].floorshade = tempshade;
+                        sector[nSector].floorpal = temppal;
+                        sector[nSector].visibility = tempvis2;
+                    }
+                }
+                else
+                {
+                    sector[searchsector].floorshade = tempshade;
+                    sector[searchsector].floorpal = temppal;
+                    sector[searchsector].visibility = tempvis2;
+                }
+                break;
+            case 3:
+                sprite[searchwall].shade = tempshade;
+                sprite[searchwall].pal = temppal;
+                break;
+            case 4:
+                wall[searchwall].shade = tempshade;
+                wall[searchwall].pal = temppal;
+                break;
+            }
+            ModifyBeep();
+        }
+        else if (alt)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+                if (somethingintab == 0 || somethingintab == 4)
+                {
+                    wall[searchwall].extra = tempextra;
+                    wall[searchwall].lotag = temptype;
+                    sub_1058C();
+                    ModifyBeep();
+                }
+                else
+                    Beep();
+                break;
+            case 1:
+            case 2:
+                if (somethingintab == 1 || somethingintab == 2)
+                {
+                    if (IsSectorHighlight(searchsector))
+                    {
+                        for (int i = 0; i < highlightsectorcnt; i++)
+                        {
+                            // FIXED: was using i as sector number
+                            int nSector = highlightsector[i];
+                            sector[nSector].extra = tempextra;
+                            sector[nSector].lotag = temptype;
+                        }
+                    }
+                    else
+                    {
+                        sector[searchsector].extra = tempextra;
+                        sector[searchsector].lotag = temptype;
+                    }
+                    sub_1058C();
+                    ModifyBeep();
+                }
+                else
+                    Beep();
+                break;
+            case 3:
+                if (somethingintab == 3)
+                {
+                    sprite[searchwall].type = temptype;
+                    sprite[searchwall].extra = tempextra;
+                    sub_1058C();
+                    ModifyBeep();
+                }
+                else
+                    Beep();
+                break;
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+                wall[searchwall].picnum = temppicnum;
+                wall[searchwall].shade = tempshade;
+                wall[searchwall].pal = temppal;
+                if (somethingintab == 0)
+                {
+                    wall[searchwall].xrepeat = tempxrepeat;
+                    wall[searchwall].yrepeat = tempyrepeat;
+                    wall[searchwall].cstat = tempcstat;
+                }
+                fixrepeats(searchwall);
+                break;
+            case 1:
+                sector[searchsector].ceilingpicnum = temppicnum;
+                sector[searchsector].ceilingshade = tempshade;
+                sector[searchsector].ceilingpal = temppal;
+                if (somethingintab == 1 || somethingintab == 2)
+                {
+                    sector[searchsector].ceilingxpanning = tempxrepeat;
+                    sector[searchsector].ceilingypanning = tempyrepeat;
+                    sector[searchsector].ceilingstat = tempcstat & 0xff; // FIXME
+                    sector[searchsector].visibility = tempvis2;
+                }
+                break;
+            case 2:
+                sector[searchsector].floorpicnum = temppicnum;
+                sector[searchsector].floorshade = tempshade;
+                sector[searchsector].floorpal = temppal;
+                if (somethingintab == 1 || somethingintab == 2)
+                {
+                    sector[searchsector].floorxpanning = tempxrepeat;
+                    sector[searchsector].floorypanning = tempyrepeat;
+                    sector[searchsector].floorstat = tempcstat & 0xff; // FIXME
+                    sector[searchsector].visibility = tempvis2;
+                }
+                break;
+            case 3:
+            {
+                sprite[searchwall].picnum = temppicnum;
+                sprite[searchwall].shade = tempshade;
+                sprite[searchwall].pal = temppal;
+                if (somethingintab == 3)
+                {
+                    sprite[searchwall].xrepeat = tempxrepeat;
+                    sprite[searchwall].yrepeat = tempyrepeat;
+                    if (sprite[searchwall].xrepeat < 1)
+                        sprite[searchwall].xrepeat = 1;
+                    if (sprite[searchwall].yrepeat < 1)
+                        sprite[searchwall].yrepeat = 1;
+                    sprite[searchwall].cstat = tempcstat;
+                }
+                int top, bottom;
+                GetSpriteExtents(&sprite[searchwall], &top, &bottom);
+                if (!(sector[sprite[searchwall].sectnum].ceilingstat & 1))
+                    sprite[searchwall].z += ClipLow(sector[sprite[searchwall].sectnum].ceilingz - top, 0);
+                    
+                if (!(sector[sprite[searchwall].sectnum].floorstat & 1))
+                    sprite[searchwall].z += ClipHigh(sector[sprite[searchwall].sectnum].floorz - bottom, 0);
+                break;
+            }
+            case 4:
+                wall[searchwall].overpicnum = temppicnum;
+                if (wall[searchwall].nextwall >= 0)
+                    wall[wall[searchwall].nextwall].overpicnum = temppicnum;
+                wall[searchwall].shade = tempshade;
+                wall[searchwall].pal = temppal;
+                if (somethingintab == 4)
+                {
+                    wall[searchwall].xrepeat = tempxrepeat;
+                    wall[searchwall].yrepeat = tempyrepeat;
+                    wall[searchwall].cstat = tempcstat;
+                }
+                fixrepeats(searchwall);
+                break;
+            }
+            ModifyBeep();
+        }
+        break;
+    case sc_OpenBracket:
+    {
+        int vdi = 0x100;
+        if (shift)
+            vdi = 0x20;
+        switch (searchstat)
+        {
+        case 1:
+            if (IsSectorHighlight(searchsector))
+            {
+                for (int i = 0; i < highlightsectorcnt; i++)
+                {
+                    int nSector = highlightsector[i];
+                    SetSectorCeilSlope(nSector, (sector[nSector].ceilingheinum-1)&~(vdi-1));
+                }
+                sprintf(buffer, "adjusted %i ceilings by %i", highlightsectorcnt, vdi);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                SetSectorCeilSlope(searchsector, (sector[searchsector].ceilingheinum-1)&~(vdi-1));
+                sprintf(buffer, "sector[%i].ceilingslope: %i", searchsector, sector[searchsector].ceilingheinum);
+                scrSetMessage(buffer);
+            }
+            break;
+        case 2:
+            if (IsSectorHighlight(searchsector))
+            {
+                for (int i = 0; i < highlightsectorcnt; i++)
+                {
+                    int nSector = highlightsector[i];
+                    SetSectorFloorSlope(nSector, (sector[nSector].floorheinum-1)&~(vdi-1));
+                }
+                sprintf(buffer, "adjusted %i floors by %i", highlightsectorcnt, vdi);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                SetSectorFloorSlope(searchsector, (sector[searchsector].floorheinum-1)&~(vdi-1));
+                sprintf(buffer, "sector[%i].floorslope: %i", searchsector, sector[searchsector].floorheinum);
+                scrSetMessage(buffer);
+            }
+            break;
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_CloseBracket:
+        if (alt)
+        {
+            short nNextSector = wall[searchwall].nextsector;
+            if (nNextSector < 0)
+            {
+                Beep();
+                break;
+            }
+            int x = wall[searchwall].x;
+            int y = wall[searchwall].y;
+            switch (searchstat)
+            {
+            case 1:
+                alignceilslope(searchsector, x, y, getceilzofslope(nNextSector, x, y));
+                ModifyBeep();
+                break;
+            case 2:
+                alignflorslope(searchsector, x, y, getflorzofslope(nNextSector, x, y));
+                ModifyBeep();
+                break;
+            default:
+                Beep();
+                break;
+            }
+        }
+        else
+        {
+            int vdi = 0x100;
+            if (shift)
+                vdi = 0x20;
+            switch (searchstat)
+            {
+            case 1:
+                if (IsSectorHighlight(searchsector))
+                {
+                    for (int i = 0; i < highlightsectorcnt; i++)
+                    {
+                        int nSector = highlightsector[i];
+                        SetSectorCeilSlope(nSector, (sector[nSector].ceilingheinum+vdi)&~(vdi-1));
+                    }
+                    sprintf(buffer, "adjusted %i ceilings by %i", highlightsectorcnt, vdi);
+                    scrSetMessage(buffer);
+                }
+                else
+                {
+                    SetSectorCeilSlope(searchsector, (sector[searchsector].ceilingheinum+vdi)&~(vdi-1));
+                    sprintf(buffer, "sector[%i].ceilingslope: %i", searchsector, sector[searchsector].ceilingheinum);
+                    scrSetMessage(buffer);
+                }
+                break;
+            case 2:
+                if (IsSectorHighlight(searchsector))
+                {
+                    for (int i = 0; i < highlightsectorcnt; i++)
+                    {
+                        int nSector = highlightsector[i];
+                        SetSectorFloorSlope(nSector, (sector[nSector].floorheinum+vdi)&~(vdi-1));
+                    }
+                    sprintf(buffer, "adjusted %i floors by %i", highlightsectorcnt, vdi);
+                    scrSetMessage(buffer);
+                }
+                else
+                {
+                    SetSectorFloorSlope(searchsector, (sector[searchsector].floorheinum+vdi)&~(vdi-1));
+                    sprintf(buffer, "sector[%i].floorslope: %i", searchsector, sector[searchsector].floorheinum);
+                    scrSetMessage(buffer);
+                }
+                break;
+            }
+            ModifyBeep();
+        }
+        break;
+    case sc_Comma:
+        switch (searchstat)
+        {
+        case 3:
+        {
+            int vsi = shift ? 0x10 : 0x100;
+            sprite[searchwall].ang = ((sprite[searchwall].ang+vsi)&(~(vsi-1)))&2047;
+            sprintf(buffer, "sprite[%i].ang: %i", searchwall, sprite[searchwall].ang);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        }
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_Period:
+        switch (searchstat)
+        {
+        case 3:
+        {
+            int vsi = shift ? 0x10 : 0x100;
+            sprite[searchwall].ang = ((sprite[searchwall].ang-1)&(~(vsi-1)))&2047;
+            sprintf(buffer, "sprite[%i].ang: %i", searchwall, sprite[searchwall].ang);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        }
+        case 0:
+        case 4:
+            AutoAlignWalls(searchwall, 0);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_BackSlash:
+        switch (searchstat)
+        {
+        case 1:
+            sector[searchsector].ceilingheinum = 0;
+            sector[searchsector].ceilingstat &= ~2;
+            sprintf(buffer, "sector[%i] ceiling slope reset", searchsector);
+            scrSetMessage(buffer);
+            break;
+        case 2:
+            sector[searchsector].floorheinum = 0;
+            sector[searchsector].floorstat &= ~2;
+            sprintf(buffer, "sector[%i] floor slope reset", searchsector);
+            scrSetMessage(buffer);
+            break;
+        }
+        ModifyBeep();
+        break;
+    case sc_Slash:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            if (shift)
+            {
+                wall[searchwall].xrepeat = wall[searchwall].yrepeat;
+            }
+            else
+            {
+                wall[searchwall].xpanning = 0;
+                wall[searchwall].ypanning = 0;
+                wall[searchwall].xrepeat = 8;
+                wall[searchwall].yrepeat = 8;
+                wall[searchwall].cstat = 0;
+            }
+            fixrepeats(searchwall);
+            sprintf(buffer, "wall[%i] pan/repeat reset", searchwall);
+            scrSetMessage(buffer);
+            break;
+        case 1:
+            sector[searchsector].ceilingxpanning = 0;
+            sector[searchsector].ceilingypanning = 0;
+            sector[searchsector].ceilingstat &= ~0x34;
+            sprintf(buffer, "sector[%i] ceiling pan reset", searchsector);
+            scrSetMessage(buffer);
+            break;
+        case 2:
+            sector[searchsector].floorxpanning = 0;
+            sector[searchsector].floorypanning = 0;
+            sector[searchsector].floorstat &= ~0x34;
+            sprintf(buffer, "sector[%i] floor pan reset", searchsector);
+            scrSetMessage(buffer);
+            break;
+        case 3:
+            if (shift)
+            {
+                sprite[searchwall].xrepeat = sprite[searchwall].yrepeat;
+            }
+            else
+            {
+                sprite[searchwall].xrepeat = sprite[searchwall].yrepeat = 64;
+            }
+            sprintf(buffer, "sprite[%i].xrepeat: %i yrepeat: %i", searchwall, sprite[searchwall].xrepeat, sprite[searchwall].yrepeat);
+            scrSetMessage(buffer);
+            break;
+        }
+        ModifyBeep();
+        break;
+    case sc_Minus:
+        if (ctrl && alt)
+        {
+            if (IsSectorHighlight(searchsector))
+            {
+                for (int i = 0; i < highlightsectorcnt; i++)
+                {
+                    sector[highlightsector[i]].visibility++;
+                }
+                scrSetMessage("highlighted sectors less visible");
+            }
+            else
+            {
+                sector[searchsector].visibility++;
+                sprintf(buffer, "Visibility: %i", sector[searchsector].visibility);
+                scrSetMessage(buffer);
+            }
+            ModifyBeep();
+        }
+        else if (ctrl)
+        {
+            int nXSector = sub_10DBC(searchsector);
+            xsector[nXSector].amplitude++;
+            sprintf(buffer, "Amplitude: %i", xsector[nXSector].amplitude);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        else if (shift)
+        {
+            int nXSector = sub_10DBC(searchsector);
+            xsector[nXSector].phase -= 6;
+            sprintf(buffer, "Phase: %i", xsector[nXSector].phase);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        else if (keystatus[sc_G])
+        {
+            gGamma = ClipLow(gGamma - 1, 0);
+            sprintf(buffer, "Gamma correction level %i", gGamma);
+            scrSetMessage(buffer);
+            scrSetGamma(gGamma);
+            scrSetDac();
+        }
+        else if (keystatus[sc_D])
+        {
+            gVisibility = ClipHigh(gVisibility + 0x10, 0x1000);
+            sprintf(buffer, "Depth cueing level %i", gVisibility);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        break;
+    case sc_Equals:
+        if (ctrl && alt)
+        {
+            if (IsSectorHighlight(searchsector))
+            {
+                for (int i = 0; i < highlightsectorcnt; i++)
+                {
+                    sector[highlightsector[i]].visibility--;
+                }
+                scrSetMessage("highlighted sectors more visible");
+            }
+            else
+            {
+                sector[searchsector].visibility--;
+                sprintf(buffer, "Visibility: %i", sector[searchsector].visibility);
+                scrSetMessage(buffer);
+            }
+            ModifyBeep();
+        }
+        else if (ctrl)
+        {
+            int nXSector = sub_10DBC(searchsector);
+            xsector[nXSector].amplitude--;
+            sprintf(buffer, "Amplitude: %i", xsector[nXSector].amplitude);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        else if (shift)
+        {
+            int nXSector = sub_10DBC(searchsector);
+            xsector[nXSector].phase += 6;
+            sprintf(buffer, "Phase: %i", xsector[nXSector].phase);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        else if (keystatus[sc_G])
+        {
+            gGamma = ClipHigh(gGamma + 1, gGammaLevels-1);
+            sprintf(buffer, "Gamma correction level %i", gGamma);
+            scrSetMessage(buffer);
+            scrSetGamma(gGamma);
+            scrSetDac();
+        }
+        else if (keystatus[sc_D])
+        {
+            gVisibility = ClipHigh(gVisibility - 0x10, 0x80);
+            sprintf(buffer, "Depth cueing level %i", gVisibility);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        break;
+    case sc_B:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            if (TestBitString(show2dwall, searchwall))
+            {
+                for (int i = 0; i < highlightcnt; i++)
+                {
+                    if ((highlight[i] & 0xc000) == 0)
+                        wall[highlight[i]].cstat ^= 1;
+                }
+            }
+            else
+            {
+                wall[searchwall].cstat ^= 1;
+                if (wall[searchwall].nextwall >= 0)
+                {
+                    wall[wall[searchwall].nextwall].cstat &= ~1;
+                    wall[wall[searchwall].nextwall].cstat |= wall[searchwall].cstat & 1;
+                }
+            }
+            sprintf(buffer, "Wall %i blocking flag is %s", searchwall, dword_D9A88[(wall[searchwall].cstat & 1) != 0]);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 3:
+            sprite[searchwall].cstat ^= 1;
+            sprintf(buffer, "sprite[%i] %s blocking", searchwall, (sprite[searchwall].cstat & 1) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_C:
+        if (alt)
+        {
+            if (searchstat == somethingintab)
+            {
+                switch (searchstat)
+                {
+                case 0:
+                {
+                    int va = wall[searchwall].picnum;
+                    if (TestBitString(show2dwall, searchwall))
+                    {
+                        for (int i = 0; i < highlightcnt; i++)
+                        {
+                            if ((highlight[i] & 0xc000) == 0)
+                            {
+                                int nWall = highlight[i];
+                                if (wall[nWall].picnum == va)
+                                {
+                                    if (wall[nWall].picnum != temppicnum)
+                                        wall[nWall].picnum = temppicnum;
+                                    else if (wall[nWall].pal != temppal)
+                                        wall[nWall].pal = temppal;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < numwalls; i++)
+                        {
+                            if (wall[i].picnum == va)
+                            {
+                                if (wall[i].picnum != temppicnum)
+                                    wall[i].picnum = temppicnum;
+                                else if (wall[i].pal != temppal)
+                                    wall[i].pal = temppal;
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    int va = sector[searchsector].ceilingpicnum;
+                    for (int i = 0; i < numsectors; i++)
+                    {
+                        if (sector[i].ceilingpicnum == va)
+                        {
+                            if (sector[i].ceilingpicnum != temppicnum)
+                                sector[i].ceilingpicnum = temppicnum;
+                            else if (sector[i].ceilingpal != temppal)
+                                sector[i].ceilingpal = temppal;
+                        }
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    int va = sector[searchsector].floorpicnum;
+                    for (int i = 0; i < numsectors; i++)
+                    {
+                        if (sector[i].floorpicnum == va)
+                        {
+                            if (sector[i].floorpicnum != temppicnum)
+                                sector[i].floorpicnum = temppicnum;
+                            else if (sector[i].floorpal != temppal)
+                                sector[i].floorpal = temppal;
+                        }
+                    }
+                    break;
+                }
+                case 3:
+                {
+                    int va = sprite[searchwall].picnum;
+                    for (int i = 0; i < kMaxSprites; i++)
+                    {
+                        if (sprite[i].statnum < kMaxStatus && sprite[i].picnum == va)
+                        {
+                            sprite[i].picnum = temppicnum;
+                            sprite[i].pal = temppal;
+                        }
+                    }
+                    break;
+                }
+                case 4:
+                {
+                    int va = wall[searchwall].overpicnum;
+                    for (int i = 0; i < numwalls; i++)
+                    {
+                        if (wall[i].overpicnum == va)
+                        {
+                            wall[i].overpicnum = temppicnum;
+                        }
+                    }
+                }
+                }
+                ModifyBeep();
+            }
+            else
+                Beep();
+        }
+        break;
+    case sc_D:
+        if (searchstat == 3)
+        {
+            if (alt)
+            {
+                int nClipDist = GetNumberBox("Sprite clipdist", sprite[searchwall].clipdist, sprite[searchwall].clipdist);
+                if (nClipDist >= 0 && nClipDist < 256)
+                {
+                    sprite[searchwall].clipdist = nClipDist;
+                    sprintf(buffer, "sprite[%d].clipdist is %d", searchwall, nClipDist);
+                    scrSetMessage(buffer);
+                    ModifyBeep();
+                }
+                else
+                {
+                    sprintf(buffer, "Clipdist must be between %d and %d", 0, 255);
+                    scrSetMessage(buffer);
+                    Beep();
+                }
+            }
+            else
+            {
+                int nDetail = GetNumberBox("Sprite detail", sprite[searchwall].filler, sprite[searchwall].filler);
+                if (nDetail >= 0 && nDetail <= 4)
+                {
+                    sprite[searchwall].filler = nDetail;
+                    sprintf(buffer, "sprite[%d].detail is %d", searchwall, nDetail);
+                    scrSetMessage(buffer);
+                    ModifyBeep();
+                }
+                else
+                {
+                    sprintf(buffer, "Detail must be between %d and %d", 0, 4);
+                    scrSetMessage(buffer);
+                    Beep();
+                }
+            }
+        }
+        break;
+    case sc_E:
+        switch (searchstat)
+        {
+        case 1:
+            sector[searchsector].ceilingstat ^= 8;
+            sprintf(buffer, "ceiling texture %s expanded", (sector[searchsector].ceilingstat & 8) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 2:
+            sector[searchsector].floorstat ^= 8;
+            sprintf(buffer, "floor texture %s expanded", (sector[searchsector].floorstat & 8) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_F:
+        if (alt)
+        {
+            switch (searchstat)
+            {  
+            case 0:
+            case 4:
+            {
+                int nSector = sectorofwall(searchwall);
+                sector[nSector].ceilingstat &= ~0x34;
+                sector[nSector].ceilingstat |= 0x40;
+                SetFirstWall(nSector, searchwall);
+                ModifyBeep();
+                break;
+            }
+            case 1:
+                sector[searchsector].ceilingstat &= ~0x34;
+                sector[searchsector].ceilingstat |= 0x40;
+                SetFirstWall(searchsector, sector[searchsector].wallptr+1);
+                ModifyBeep();
+                break;
+            case 2:
+                sector[searchsector].floorstat &= ~0x34;
+                sector[searchsector].floorstat |= 0x40;
+                SetFirstWall(searchsector, sector[searchsector].wallptr+1);
+                ModifyBeep();
+                break;
+            default:
+                Beep();
+                break;
+            }
+        }
+        else if (ctrl)
+        {
+            gFogMode = !gFogMode;
+            scrLoadPLUs();
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+            {
+                int vc = wall[searchwall].cstat & 0x108;
+                switch (vc)
+                {
+                case 0:
+                    vc = 8;
+                    break;
+                case 8:
+                    vc = 0x108;
+                    break;
+                case 0x100:
+                    vc = 0;
+                    break;
+                case 0x108:
+                    vc = 0x100;
+                    break;
+                }
+
+                wall[searchwall].cstat &= ~0x108;
+                wall[searchwall].cstat |= vc;
+                sprintf(buffer, "wall[%i]", searchwall);
+                if (wall[searchwall].cstat & 0x08)
+                    strcat(buffer, " x-flipped");
+                if (wall[searchwall].cstat & 0x100)
+                {
+                    if (wall[searchwall].cstat & 0x08)
+                        strcat(buffer, " and");
+                    strcat(buffer, " y-flipped");
+                }
+                scrSetMessage(buffer);
+                ModifyBeep();
+                break;
+            }
+            case 1:
+            {
+                int vc = sector[searchsector].ceilingstat & 0x34;
+                switch (vc)
+                {
+                case 0x00:
+                    vc = 0x10;
+                    break;
+                case 0x10:
+                    vc = 0x30;
+                    break;
+                case 0x30:
+                    vc = 0x20;
+                    break;
+                case 0x20:
+                    vc = 0x04;
+                    break;
+                case 0x04:
+                    vc = 0x14;
+                    break;
+                case 0x14:
+                    vc = 0x34;
+                    break;
+                case 0x34:
+                    vc = 0x24;
+                    break;
+                case 0x24:
+                    vc = 0x00;
+                    break;
+                }
+                sector[searchsector].ceilingstat &= ~0x34;
+                sector[searchsector].ceilingstat |= vc;
+                ModifyBeep();
+                break;
+            }
+            case 2:
+            {
+                int vc = sector[searchsector].floorstat & 0x34;
+                switch (vc)
+                {
+                case 0x00:
+                    vc = 0x10;
+                    break;
+                case 0x10:
+                    vc = 0x30;
+                    break;
+                case 0x30:
+                    vc = 0x20;
+                    break;
+                case 0x20:
+                    vc = 0x04;
+                    break;
+                case 0x04:
+                    vc = 0x14;
+                    break;
+                case 0x14:
+                    vc = 0x34;
+                    break;
+                case 0x34:
+                    vc = 0x24;
+                    break;
+                case 0x24:
+                    vc = 0x00;
+                    break;
+                }
+                sector[searchsector].floorstat &= ~0x34;
+                sector[searchsector].floorstat |= vc;
+                ModifyBeep();
+                break;
+            }
+            case 0x03:
+            {
+                int vc = sprite[searchwall].cstat;
+                if ((vc&0x30) == 0x20 && !(vc&0x40))
+                {
+                    sprite[searchwall].cstat &= ~0x08;
+                    sprite[searchwall].cstat ^= 0x04;
+                }
+                else
+                {
+                    vc &= 0x0c;
+                    switch (vc)
+                    {
+                    case 0x00:
+                        vc = 0x04;
+                        break;
+                    case 0x04:
+                        vc = 0x0c;
+                        break;
+                    case 0x0c:
+                        vc = 0x08;
+                        break;
+                    case 0x08:
+                        vc = 0x00;
+                        break;
+                    }
+                    sprite[searchwall].cstat &= ~0x0c;
+                    sprite[searchwall].cstat |= vc;
+                }
+                break;
+            }
+            }
+            ModifyBeep();
+        }
+        break;
+    case sc_G:
+        if (alt)
+        {
+            if (++dword_D9A80 >= 5)
+                dword_D9A80 = 0;
+            scrSetPalette(dword_D9A80);
+            scrSetDac();
+            switch (dword_D9A80)
+            {
+            case 0:
+                scrSetMessage("Normal palette");
+                break;
+            case 1:
+                scrSetMessage("Water palette");
+                break;
+            case 2:
+                scrSetMessage("Beast palette");
+                break;
+            case 3:
+                scrSetMessage("Sewer palette");
+                break;
+            case 4:
+                scrSetMessage("Invulnerability palette");
+                break;
+            }
+        }
+        break;
+    case sc_H:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            wall[searchwall].cstat ^= 0x40;
+            if (wall[searchwall].nextwall >= 0)
+            {
+                wall[wall[searchwall].nextwall].cstat &= ~0x40;
+                wall[wall[searchwall].nextwall].cstat ^= wall[searchwall].cstat & 0x40;
+            }
+            sprintf(buffer, "wall[%i] %s hitscan sensitive", searchwall, (wall[searchwall].cstat & 0x40) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 3:
+            sprite[searchwall].cstat ^= 0x100;
+            sprintf(buffer, "sprite[%i] %s hitscan sensitive", searchwall, (sprite[searchwall].cstat & 0x100) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_I:
+        switch (searchstat)
+        {
+        case 3:
+            sprite[searchwall].cstat ^= 0x8000;
+            sprintf(buffer, "sprite[%i] is%s invisible", searchwall, (sprite[searchwall].cstat & 0x8000) ? "" : " not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_L:
+        switch (searchstat)
+        {
+        case 3:
+        {
+            int top, bottom;
+            GetSpriteExtents(&sprite[searchwall], &top, &bottom);
+            int bakcstat = sprite[searchwall].cstat;
+            sprite[searchwall].cstat &= ~0x100;
+            ResetLightBomb();
+            DoLightBomb(sprite[searchwall].x, sprite[searchwall].y, top, sprite[searchwall].sectnum);
+            sprite[searchwall].cstat = bakcstat;
+            ModifyBeep();
+            break;
+        }
+        case 2:
+            if (sector[searchsector].ceilingstat & 0x01)
+            {
+                sector[searchsector].floorstat ^= 0x8000;
+                sprintf(buffer, "Forced floor shading is %s", dword_D9A88[(sector[searchsector].floorstat & 0x8000) != 0]);
+                scrSetMessage(buffer);
+            }
+            else
+                scrSetMessage("Sky must be parallaxed to force floorshade");
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_M:
+        switch (searchstat)
+        {
+        case 0:
+        case 1: // ??
+        case 2: // ??
+        case 4:
+        {
+            int nNextWall = wall[searchwall].nextwall;
+            if (nNextWall < 0)
+            {
+                Beep();
+                break;
+            }
+            wall[searchwall].cstat ^= 0x10;
+            if (wall[searchwall].cstat & 0x10)
+            {
+                wall[searchwall].cstat &= ~0x08;
+                if (!shift)
+                {
+                    wall[nNextWall].cstat ^= 0x18;
+                    if (wall[searchwall].overpicnum < 0)
+                        wall[searchwall].overpicnum = 0;
+                    wall[nNextWall].overpicnum = wall[searchwall].overpicnum;
+                }
+            }
+            else
+            {
+                wall[searchwall].cstat &= ~0x08;
+                if (!shift)
+                {
+                    wall[nNextWall].cstat &= ~0x18;
+                }
+            }
+            wall[searchwall].cstat &= ~0x20;
+            if (!shift)
+                wall[nNextWall].cstat &= ~0x20;
+            sprintf(buffer, "wall[%i] %s masked", searchwall, (wall[searchwall].cstat & 0x10) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        }
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_O:
+        if (alt)
+        {
+            //asksave = ShowOptions();
+            asksave |= ShowOptions();
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+                wall[searchwall].cstat ^= 0x04;
+                if (wall[searchwall].nextwall == -1)
+                {
+                    sprintf(buffer, "Texture pegged at %s", (wall[searchwall].cstat & 0x04) ? "bottom" : "top");
+                }
+                else
+                {
+                    sprintf(buffer, "Texture pegged at %s", (wall[searchwall].cstat & 0x04) ? "outside" : "inside");
+                }
+                scrSetMessage(buffer);
+                ModifyBeep();
+                break;
+            case 3:
+            {
+                if (sector[sprite[searchwall].sectnum].floorz < sprite[searchwall].z)
+                {
+                    scrSetMessage("Sprite z is below floor");
+                    Beep();
+                    break;
+                }
+                if (sector[sprite[searchwall].sectnum].ceilingz > sprite[searchwall].z)
+                {
+                    scrSetMessage("Sprite z is above ceiling");
+                    Beep();
+                    break;
+                }
+                int va = HitScan(&sprite[searchwall], sprite[searchwall].z, Cos(sprite[searchwall].ang+1024)>>16, Sin(sprite[searchwall].ang+1024)>>16, 0, 0, 0);
+                if (va == 0 || va == 4)
+                {
+                    int nx, ny;
+                    GetWallNormal(gHitInfo.hitwall, &nx, &ny);
+                    sprite[searchwall].x = gHitInfo.hitx + (nx>>14);
+                    sprite[searchwall].y = gHitInfo.hity + (ny>>14);
+                    sprite[searchwall].z = gHitInfo.hitz;
+
+                    sprite[searchwall].cstat &= ~0x01;
+                    sprite[searchwall].cstat |= 0x40;
+
+                    ChangeSpriteSect(searchwall, gHitInfo.hitsect);
+
+                    sprite[searchwall].ang = (GetWallAngle(gHitInfo.hitwall)+512)&2047;
+                    ModifyBeep();
+                }
+                else
+                    Beep();
+                break;
+            }
+            default:
+                Beep();
+                break;
+            }
+        }
+        break;
+    case sc_P:
+        if (ctrl)
+        {
+            if (++parallaxtype >= 3)
+                parallaxtype = 0;
+            sprintf(buffer, "Parallax type: %i", parallaxtype);
+            scrSetMessage(buffer);
+            ModifyBeep();
+        }
+        else if (alt)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+                wall[searchwall].pal = GetNumberBox("Wall palookup", wall[searchwall].pal, wall[searchwall].pal);
+                break;
+            case 1:
+                sector[searchsector].ceilingpal = GetNumberBox("Ceiling palookup", sector[searchsector].ceilingpal, sector[searchsector].ceilingpal);
+                break;
+            case 2:
+                sector[searchsector].floorpal = GetNumberBox("Floor palookup", sector[searchsector].floorpal, sector[searchsector].floorpal);
+                break;
+            case 3:
+                sprite[searchwall].pal = GetNumberBox("Sprite palookup", sprite[searchwall].pal, sprite[searchwall].pal);
+                break;
+            default:
+                break;
+            }
+            ModifyBeep();
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 1:
+                sector[searchsector].ceilingstat ^= 0x01;
+                sprintf(buffer, "sector[%i] ceiling %s parallaxed", searchsector, (sector[searchsector].ceilingstat & 0x01) ? "is" : "not");
+                scrSetMessage(buffer);
+                if (sector[searchsector].ceilingstat & 0x01)
+                    SetSkyTile(sector[searchsector].ceilingpicnum);
+                else
+                    sector[searchsector].floorstat &= ~0x8000;
+                ModifyBeep();
+                break;
+            case 2:
+                sector[searchsector].floorstat ^= 0x01;
+                sprintf(buffer, "sector[%i] floor %s parallaxed", searchsector, (sector[searchsector].floorstat & 0x01) ? "is" : "not");
+                scrSetMessage(buffer);
+                ModifyBeep();
+                break;
+            default:
+                Beep();
+                break;
+            }
+        }
+        break;
+    case sc_R:
+        switch (searchstat)
+        {
+        case 1:
+            sector[searchsector].ceilingstat ^= 0x40;
+            sprintf(buffer, "sector[%i] ceiling %s relative", searchsector, (sector[searchsector].ceilingstat & 0x40) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 2:
+            sector[searchsector].floorstat ^= 0x40;
+            sprintf(buffer, "sector[%i] floor %s relative", searchsector, (sector[searchsector].floorstat & 0x40) ? "is" : "not");
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 3:
+        {
+            int vc = sprite[searchwall].cstat & 0x30;
+            switch (vc)
+            {
+            case 0x00:
+                sprintf(buffer, "sprite[%i] is wall sprite", searchwall);
+                vc = 0x10;
+                break;
+            case 0x10:
+                sprintf(buffer, "sprite[%i] is floor sprite", searchwall);
+                vc = 0x20;
+                break;
+            case 0x20:
+                sprintf(buffer, "sprite[%i] is face sprite", searchwall);
+                vc = 0x00;
+                break;
+            default:
+                sprintf(buffer, "sprite[%i] is face sprite", searchwall);
+                vc = 0x00;
+                break;
+            }
+            scrSetMessage(buffer);
+            sprite[searchwall].cstat &= ~0x30;
+            sprite[searchwall].cstat |= vc;
+            ModifyBeep();
+            break;
+        }
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_S:
+        if (alt)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+            {
+                int x = 0x4000;
+                int y = divscale(searchx-xdim/2, xdim/2, 14);
+                RotateVector(&x, &y, ang);
+                short hitsect, hitwall, hitsprite;
+                int hitx, hity, hitz;
+                hitsect = hitwall = hitsprite = -1;
+                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                if (hitwall == searchwall)
+                {
+                    if (hitsect < 0)
+                    {
+                        Beep();
+                        break;
+                    }
+                    x = hitx;
+                    y = hity;
+                    if (word_CA8A0 > 0 && gGrid > 0)
+                    {
+                        x = (hitx + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                        y = (hity + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                    }
+                    int nSprite = InsertObject(searchstat, hitsect, x, y, hitz, ang);
+                    if (nSprite >= 0)
+                    {
+                        sprite[nSprite].ang = (GetWallAngle(hitwall)+512)&2047;
+                        int nx, ny;
+                        GetWallNormal(hitwall, &nx, &ny);
+                        sprite[nSprite].x = hitx + (nx >> 14);
+                        sprite[nSprite].y = hity + (ny >> 14);
+                        sprite[nSprite].z = hitz;
+                        sprite[nSprite].cstat |= 0x50;
+                        updatenumsprites();
+                        asksave = 1;
+                        ModifyBeep();
+                    }
+                }
+                break;
+            }
+            case 1:
+            case 2:
+            {
+                int x = 0x4000;
+                int y = divscale(searchx-xdim/2, xdim/2, 14);
+                RotateVector(&x, &y, ang);
+                short hitsect, hitwall, hitsprite;
+                int hitx, hity, hitz;
+                hitsect = hitwall = hitsprite = -1;
+                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                if (hitsect < 0)
+                {
+                    Beep();
+                    break;
+                }
+                x = hitx;
+                y = hity;
+                if (word_CA8A0 > 0 && gGrid > 0)
+                {
+                    x = (hitx + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                    y = (hity + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                }
+                int nSprite = InsertObject(searchstat, hitsect, x, y, hitz, ang);
+                if (nSprite >= 0)
+                {
+                    asksave = 1;
+                    ModifyBeep();
+                }
+                break;
+            }
+            default:
+                Beep();
+                break;
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+            case 4:
+            {
+                int x = 0x4000;
+                int y = divscale(searchx-xdim/2, xdim/2, 14);
+                RotateVector(&x, &y, ang);
+                short hitsect, hitwall, hitsprite;
+                int hitx, hity, hitz;
+                hitsect = hitwall = hitsprite = -1;
+                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                if (hitwall == searchwall)
+                {
+                    int v64;
+                    if (somethingintab != 3)
+                    {
+                        v64 = tilePick(-1, -1, 5);
+                        if (v64 == -1)
+                            break;
+                    }
+                    int nSprite = InsertSprite(searchsector, 0);
+                    sprite[nSprite].ang = (GetWallAngle(hitwall)+512)&2047;
+                    int nx, ny;
+                    GetWallNormal(hitwall, &nx, &ny);
+                    sprite[nSprite].x = hitx + (nx >> 14);
+                    sprite[nSprite].y = hity + (ny >> 14);
+                    sprite[nSprite].z = hitz;
+
+                    if (somethingintab == 3)
+                    {
+                        sprite[nSprite].picnum = temppicnum;
+                        sprite[nSprite].shade = tempshade;
+                        sprite[nSprite].pal = temppal;
+                        sprite[nSprite].xrepeat = tempxrepeat;
+                        sprite[nSprite].yrepeat = tempyrepeat;
+                        if (sprite[nSprite].xrepeat < 1)
+                            sprite[nSprite].xrepeat = 1;
+                        if (sprite[nSprite].yrepeat < 1)
+                            sprite[nSprite].yrepeat = 1;
+
+                        tempcstat &= ~0x30;
+                        sprite[nSprite].cstat = tempcstat | 0x50;
+                        updatenumsprites();
+                        ModifyBeep();
+                        break;
+                    }
+
+                    sprite[nSprite].cstat |= 0x50;
+                    sprite[nSprite].picnum = v64;
+                    sprite[nSprite].shade = -8;
+                    sprite[nSprite].pal = 0;
+                    if (tilesizy[sprite[nSprite].picnum] >= 32)
+                        sprite[nSprite].cstat |= 1;
+                    updatenumsprites();
+                    ModifyBeep();
+                }
+                break;
+            }
+            case 1:
+            case 2:
+            {
+                int x = 0x4000;
+                int y = divscale(searchx-xdim/2, xdim/2, 14);
+                RotateVector(&x, &y, ang);
+                short hitsect, hitwall, hitsprite;
+                int hitx, hity, hitz;
+                hitsect = hitwall = hitsprite = -1;
+                hitscan(posx, posy, posz, cursectnum, x, y, (searchy-horiz)*2000, &hitsect, &hitwall, &hitsprite, &hitx, &hity, &hitz, 0);
+                if (hitsect < 0)
+                {
+                    Beep();
+                    break;
+                }
+                x = hitx;
+                y = hity;
+                if (word_CA8A0 > 0 && gGrid > 0)
+                {
+                    x = (hitx + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                    y = (hity + (0x400 >> gGrid)) & (0xffffffff << (11-gGrid));
+                }
+                int v64;
+                if (somethingintab != 3)
+                {
+                    v64 = tilePick(-1, -1, 3);
+                    if (v64 == -1)
+                        break;
+                }
+                int nSprite = InsertSprite(searchsector, 0);
+                sprite[nSprite].x = x;
+                sprite[nSprite].y = y;
+                sprite[nSprite].z = hitz;
+
+                if (somethingintab == 3)
+                {
+                    sprite[nSprite].picnum = temppicnum;
+                    sprite[nSprite].shade = tempshade;
+                    sprite[nSprite].pal = temppal;
+                    sprite[nSprite].xrepeat = tempxrepeat;
+                    sprite[nSprite].yrepeat = tempyrepeat;
+                    sprite[nSprite].ang = tempang;
+                    if (sprite[nSprite].xrepeat < 1)
+                        sprite[nSprite].xrepeat = 1;
+                    if (sprite[nSprite].yrepeat < 1)
+                        sprite[nSprite].yrepeat = 1;
+
+                    sprite[nSprite].cstat = tempcstat;
+                }
+                else
+                {
+                    sprite[nSprite].picnum = v64;
+                    sprite[nSprite].shade = -8;
+                    sprite[nSprite].pal = 0;
+                    if (tilesizy[sprite[nSprite].picnum] >= 32)
+                        sprite[nSprite].cstat |= 1;
+                }
+                int top, bottom;
+                GetSpriteExtents(&sprite[nSprite], &top, &bottom);
+                if (searchstat == 2)
+                    sprite[nSprite].z += getflorzofslope(hitsect, x, y) - bottom;
+                else
+                    sprite[nSprite].z += getceilzofslope(hitsect, x, y) - top;
+                sub_10EA0();
+                updatenumsprites();
+                ModifyBeep();
+                break;
+            }
+            default:
+                Beep();
+                break;
+            }
+        }
+        break;
+    case sc_T:
+        switch (searchstat)
+        {
+        case 4:
+        {
+            int vd = 0;
+            if (wall[searchwall].cstat & 0x80)
+                vd = 2;
+            if (wall[searchwall].cstat & 0x200)
+                vd = 1;
+            if (++vd >= 3)
+                vd = 0;
+            switch (vd)
+            {
+            case 0:
+                wall[searchwall].cstat &= ~0x280;
+                break;
+            case 1:
+                wall[searchwall].cstat |= 0x280;
+                break;
+            case 2:
+                wall[searchwall].cstat &= ~0x280;
+                wall[searchwall].cstat |= 0x80;
+                break;
+            }
+            if (wall[searchwall].nextwall >= 0)
+            {
+                wall[wall[searchwall].nextwall].cstat &= ~0x280;
+                wall[wall[searchwall].nextwall].cstat |= wall[searchwall].cstat & 0x280;
+            }
+            sprintf(buffer, "wall[%i] translucent type %d", searchwall, vd);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        }
+        case 3:
+        {
+            int vd = 0;
+            if (sprite[searchwall].cstat & 0x02)
+                vd = 2;
+            if (sprite[searchwall].cstat & 0x200)
+                vd = 1;
+            if (++vd >= 3)
+                vd = 0;
+            switch (vd)
+            {
+            case 0:
+                sprite[searchwall].cstat &= ~0x202;
+                break;
+            case 1:
+                sprite[searchwall].cstat |= 0x202;
+                break;
+            case 2:
+                sprite[searchwall].cstat &= ~0x202;
+                sprite[searchwall].cstat |= 0x02;
+                break;
+            }
+            sprintf(buffer, "sprite[%i] translucent type %d", searchwall, vd);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        }
+        }
+        break;
+    case sc_U:
+        for (int i = 0; i < numsectors; i++)
+        {
+            sector[i].visibility = 0;
+        }
+        scrSetMessage("All sector visibility values set to 0");
+        break;
+    case sc_V:
+        switch (searchstat)
+        {
+        case 0:
+        {
+            short vc = wall[searchwall].picnum;
+            wall[searchwall].picnum = tilePick(wall[searchwall].picnum, wall[searchwall].picnum, 0);
+            vel = svel = angvel = 0;
+            if (vc != wall[searchwall].picnum)
+                ModifyBeep();
+            break;
+        }
+        case 1:
+        {
+            short vc = sector[searchsector].ceilingpicnum;
+            sector[searchsector].ceilingpicnum = tilePick(sector[searchsector].ceilingpicnum, sector[searchsector].ceilingpicnum, 1);
+            vel = svel = angvel = 0;
+            if (sector[searchsector].ceilingstat & 0x01)
+                SetSkyTile(sector[searchsector].ceilingpicnum);
+            else
+                sector[searchsector].floorstat &= ~0x8000;
+            if (vc != sector[searchsector].ceilingpicnum)
+                ModifyBeep();
+            break;
+        }
+        case 2:
+        {
+            short vc = sector[searchsector].floorpicnum;
+            sector[searchsector].floorpicnum = tilePick(sector[searchsector].floorpicnum, sector[searchsector].floorpicnum, 2);
+            vel = svel = angvel = 0;
+            if (vc != sector[searchsector].floorpicnum)
+                ModifyBeep();
+            break;
+        }
+        case 3:
+        {
+            if (sprite[searchwall].cstat & 0x30)
+                searchstat = 5;
+            short vc = sprite[searchwall].picnum;
+            sprite[searchwall].picnum = tilePick(sprite[searchwall].picnum, sprite[searchwall].picnum, searchstat);
+            int top, bottom;
+            GetSpriteExtents(&sprite[searchwall], &top, &bottom);
+            if (!(sector[sprite[searchwall].sectnum].ceilingstat & 0x01))
+                sprite[searchwall].z += ClipLow(sector[sprite[searchwall].sectnum].ceilingz - top, 0);
+            if (!(sector[sprite[searchwall].sectnum].floorstat & 0x01))
+                sprite[searchwall].z += ClipHigh(sector[sprite[searchwall].sectnum].floorz - bottom, 0);
+            vel = svel = angvel = 0;
+            if (vc != sector[searchsector].floorpicnum)
+                ModifyBeep();
+            break;
+        }
+        case 4:
+        {
+            short vc = wall[searchwall].overpicnum;
+            wall[searchwall].overpicnum = tilePick(wall[searchwall].overpicnum, wall[searchwall].overpicnum, 4);
+            vel = svel = angvel = 0;
+            if (wall[searchwall].nextwall >= 0)
+                wall[wall[searchwall].nextwall].overpicnum = wall[searchwall].overpicnum;
+            if (vc != wall[searchwall].overpicnum)
+                ModifyBeep();
+            break;
+        }
+        }
+        break;
+    case sc_W:
+    {
+        int nXSector = sub_10DBC(searchsector);
+        int wf = xsector[nXSector].wave;
+        do
+        {
+            if (++wf >= 15)
+                wf = 0;
+        } while (!WaveForm[wf]);
+        OperateSectors(sub_2611C, wf);
+        scrSetMessage(WaveForm[wf]);
+        break;
+    }
+    case sc_kpad_Minus:
+    {
+        int vd;
+        if (ctrl)
+            vd = 0x100;
+        else
+            vd = 0x01;
+        if (IsSectorHighlight(searchsector))
+        {
+            for (int i = 0; i < highlightsectorcnt; i++)
+            {
+                int nSector = highlightsector[i];
+                sector[nSector].ceilingshade = ClipHigh(sector[nSector].ceilingshade+vd, 63);
+                sector[nSector].floorshade = ClipHigh(sector[nSector].floorshade+vd, 63);
+                int startwall = sector[nSector].wallptr;
+                int endwall = startwall + sector[nSector].wallnum - 1;
+                for (int j = startwall; j <= endwall; j++)
+                {
+                    wall[j].shade = ClipHigh(wall[j].shade+vd, 63);
+                }
+            }
+        }
+        else
+        {
+            signed char v14;
+            switch (searchstat)
+            {
+            case 0:
+                v14 = wall[searchwall].shade = ClipHigh(wall[searchwall].shade+vd, 63);
+                break;
+            case 1:
+                v14 = sector[searchsector].ceilingshade = ClipHigh(sector[searchsector].ceilingshade+vd, 63);
+                break;
+            case 2:
+                v14 = sector[searchsector].floorshade = ClipHigh(sector[searchsector].floorshade+vd, 63);
+                break;
+            case 3:
+                v14 = sprite[searchwall].shade = ClipHigh(sprite[searchwall].shade+vd, 63);
+                break;
+            case 4:
+                v14 = wall[searchwall].shade = ClipHigh(wall[searchwall].shade+vd, 63);
+                break;
+            }
+            sprintf(buffer, "shade: %i", v14);
+            scrSetMessage(buffer);
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_kpad_Plus:
+    {
+        int vd;
+        if (ctrl)
+            vd = 0x100;
+        else
+            vd = 0x01;
+        if (IsSectorHighlight(searchsector))
+        {
+            for (int i = 0; i < highlightsectorcnt; i++)
+            {
+                int nSector = highlightsector[i];
+                sector[nSector].ceilingshade = ClipLow(sector[nSector].ceilingshade-vd, -128);
+                sector[nSector].floorshade = ClipLow(sector[nSector].floorshade-vd, -128);
+                int startwall = sector[nSector].wallptr;
+                int endwall = startwall + sector[nSector].wallnum - 1;
+                for (int j = startwall; j <= endwall; j++)
+                {
+                    wall[j].shade = ClipLow(wall[j].shade-vd, -128);
+                }
+            }
+        }
+        else
+        {
+            signed char v14;
+            switch (searchstat)
+            {
+            case 0:
+                v14 = wall[searchwall].shade = ClipLow(wall[searchwall].shade-vd, -128);
+                break;
+            case 1:
+                v14 = sector[searchsector].ceilingshade = ClipLow(sector[searchsector].ceilingshade-vd, -128);
+                break;
+            case 2:
+                v14 = sector[searchsector].floorshade = ClipLow(sector[searchsector].floorshade-vd, -128);
+                break;
+            case 3:
+                v14 = sprite[searchwall].shade = ClipLow(sprite[searchwall].shade-vd, -128);
+                break;
+            case 4:
+                v14 = wall[searchwall].shade = ClipLow(wall[searchwall].shade-vd, -128);
+                break;
+            }
+            sprintf(buffer, "shade: %i", v14);
+            scrSetMessage(buffer);
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_kpad_0:
+        if (IsSectorHighlight(searchsector))
+        {
+            for (int i = 0; i < highlightsectorcnt; i++)
+            {
+                int nSector = highlightsector[i];
+                sector[nSector].ceilingshade = 0;
+                sector[nSector].floorshade = 0;
+                int startwall = sector[nSector].wallptr;
+                int endwall = startwall + sector[nSector].wallnum - 1;
+                for (int j = startwall; j <= endwall; j++)
+                {
+                    wall[j].shade = 0;
+                }
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+                wall[searchwall].shade = 0;
+                break;
+            case 1:
+                sector[searchsector].ceilingshade = 0;
+                break;
+            case 2:
+                sector[searchsector].floorshade = 0;
+                break;
+            case 3:
+                sprite[searchwall].shade = 0;
+                break;
+            case 4:
+                wall[searchwall].shade = 0;
+                break;
+            }
+        }
+        ModifyBeep();
+        break;
+    case sc_kpad_4:
+    case sc_kpad_6:
+    {
+        char vbl, val;
+        if (gOldKeyMapping)
+            vbl = kp5;
+        else
+            vbl = !shift;
+        if (gOldKeyMapping)
+            val = shift;
+        else
+            val = ctrl;
+        int vd;
+        if (key == sc_kpad_4)
+            vd = 1;
+        else
+            vd = -1;
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            if (val)
+            {
+                wall[searchwall].xpanning = changechar(wall[searchwall].xpanning, vd, vbl, 0);
+                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                wall[searchwall].xpanning = changechar(wall[searchwall].xpanning, vd, vbl, 1);
+                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                scrSetMessage(buffer);
+            }
+            break;
+        case 1:
+            sector[searchsector].ceilingxpanning = changechar(sector[searchsector].ceilingxpanning, vd, vbl, 0);
+            break;
+        case 2:
+            sector[searchsector].floorxpanning = changechar(sector[searchsector].floorxpanning, vd, vbl, 0);
+            break;
+        case 3:
+            if (val)
+            {
+                sprite[searchwall].xoffset = changechar(sprite[searchwall].xoffset, vd, vbl, 0);
+                sprintf(buffer, "sprite %i xoffset: %i yoffset: %i", searchwall, sprite[searchwall].xoffset, sprite[searchwall].yoffset);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                sprite[searchwall].xrepeat = ClipLow(changechar(sprite[searchwall].xrepeat, vd, -vbl, 1), 4);
+                sprintf(buffer, "sprite %i xrepeat: %i yrepeat: %i", searchwall, sprite[searchwall].xrepeat, sprite[searchwall].yrepeat);
+                scrSetMessage(buffer);
+            }
+            break;
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_kpad_2:
+    case sc_kpad_8:
+    {
+        char vbl, val;
+        if (gOldKeyMapping)
+            vbl = kp5;
+        else
+            vbl = !shift;
+        if (gOldKeyMapping)
+            val = shift;
+        else
+            val = ctrl;
+        int vd;
+        if (key == sc_kpad_8)
+            vd = -1;
+        else
+            vd = 1;
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            if (val)
+            {
+                wall[searchwall].ypanning = changechar(wall[searchwall].ypanning, vd, vbl, 0);
+                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                wall[searchwall].ypanning = changechar(wall[searchwall].ypanning, vd, vbl, 1);
+                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                scrSetMessage(buffer);
+            }
+            break;
+        case 1:
+            sector[searchsector].ceilingypanning = changechar(sector[searchsector].ceilingypanning, vd, vbl, 0);
+            break;
+        case 2:
+            sector[searchsector].floorypanning = changechar(sector[searchsector].floorypanning, vd, vbl, 0);
+            break;
+        case 3:
+            if (val)
+            {
+                sprite[searchwall].yoffset = changechar(sprite[searchwall].yoffset, vd, vbl, 0);
+                sprintf(buffer, "sprite %i xoffset: %i yoffset: %i", searchwall, sprite[searchwall].xoffset, sprite[searchwall].yoffset);
+                scrSetMessage(buffer);
+            }
+            else
+            {
+                sprite[searchwall].yrepeat = ClipLow(changechar(sprite[searchwall].yrepeat, vd, -vbl, 1), 4);
+                sprintf(buffer, "sprite %i xrepeat: %i yrepeat: %i", searchwall, sprite[searchwall].xrepeat, sprite[searchwall].yrepeat);
+                scrSetMessage(buffer);
+            }
+            break;
+        }
+        ModifyBeep();
+        break;
+    }
+    case sc_kpad_Enter:
+        overheadeditor();
+        clearview(0);
+        scrNextPage();
+        keyFlushScans();
+        sub_1058C();
+        break;
+    case sc_F2:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+        {
+            int nXWall = wall[searchwall].extra;
+            if (nXWall <= 0)
+            {
+                Beep();
+                break;
+            }
+            xwall[nXWall].state ^= 1;
+            xwall[nXWall].busy = xwall[nXWall].state << 16;
+            scrSetMessage(dword_D9A88[xwall[nXWall].state]);
+            ModifyBeep();
+            break;
+        }
+        case 1:
+        case 2:
+        {
+            int nXSector = sector[searchsector].extra;
+            if (nXSector <= 0)
+            {
+                Beep();
+                break;
+            }
+            xsector[nXSector].state ^= 1;
+            xsector[nXSector].busy = xsector[nXSector].state << 16;
+            scrSetMessage(dword_D9A88[xsector[nXSector].state]);
+            ModifyBeep();
+            break;
+        }
+        case 3:
+        {
+            int nXSprite = sprite[searchwall].extra;
+            if (nXSprite <= 0)
+            {
+                Beep();
+                break;
+            }
+            xsprite[nXSprite].state ^= 1;
+            xsprite[nXSprite].busy = xsprite[nXSprite].state << 16;
+            scrSetMessage(dword_D9A88[xsprite[nXSprite].state]);
+            ModifyBeep();
+            break;
+        }
+        }
+        break;
+    case sc_F3:
+    {
+        int va = searchsector;
+        if (alt)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            {
+                if (wall[searchwall].nextsector != -1)
+                    va = wall[searchwall].nextsector;
+            }
+            case 1:
+            case 2:
+            {
+                int nXSector = sector[va].extra;
+                if (nXSector > 0)
+                {
+                    xsector[nXSector].offFloorZ = sector[va].floorz;
+                    xsector[nXSector].offCeilZ = sector[va].ceilingz;
+                    sprintf(buffer, "SET offFloorZ= %i  offCeilZ= %i", xsector[nXSector].offFloorZ, xsector[nXSector].offCeilZ);
+                    scrSetMessage(buffer);
+                    ModifyBeep();
+                    asksave = 1;
+                }
+                else
+                {
+                    scrSetMessage("Sector type must first be set in 2D mode.");
+                    Beep();
+                }
+                break;
+            }
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+            {
+                if (wall[searchwall].nextsector != -1)
+                    va = wall[searchwall].nextsector;
+            }
+            case 1:
+            case 2:
+            {
+                int nXSector = sector[va].extra;
+                if (nXSector > 0)
+                {
+                    switch (sector[va].lotag)
+                    {
+                    case 600:
+                    case 614:
+                    case 615:
+                    case 616:
+                    case 617:
+                        sector[va].floorz = xsector[nXSector].offFloorZ;
+                        sector[va].ceilingz = xsector[nXSector].offCeilZ;
+                        sprintf(buffer, "SET floorz= %i  ceilingz= %i", sector[va].floorz, sector[va].ceilingz);
+                        scrSetMessage(buffer);
+                        ModifyBeep();
+                        asksave = 1;
+                        break;
+                    }
+                }
+                else
+                {
+                    scrSetMessage("Sector type must first be set in 2D mode.");
+                    Beep();
+                }
+                break;
+            }
+            }
+        }
+        break;
+    }
+    case sc_F4:
+    {
+        int va = searchsector;
+        if (alt)
+        {
+            switch (searchstat)
+            {
+            case 0:
+            {
+                if (wall[searchwall].nextsector != -1)
+                    va = wall[searchwall].nextsector;
+            }
+            case 1:
+            case 2:
+            {
+                int nXSector = sector[va].extra;
+                if (nXSector > 0)
+                {
+                    xsector[nXSector].onFloorZ = sector[va].floorz;
+                    xsector[nXSector].onCeilZ = sector[va].ceilingz;
+                    sprintf(buffer, "SET onFloorZ= %i  onCeilZ= %i", xsector[nXSector].onFloorZ, xsector[nXSector].onCeilZ);
+                    scrSetMessage(buffer);
+                    ModifyBeep();
+                    asksave = 1;
+                }
+                else
+                {
+                    scrSetMessage("Sector type must first be set in 2D mode.");
+                    Beep();
+                }
+                break;
+            }
+            }
+        }
+        else
+        {
+            switch (searchstat)
+            {
+            case 0:
+            {
+                if (wall[searchwall].nextsector != -1)
+                    va = wall[searchwall].nextsector;
+            }
+            case 1:
+            case 2:
+            {
+                int nXSector = sector[va].extra;
+                if (nXSector > 0)
+                {
+                    switch (sector[va].lotag)
+                    {
+                    case 600:
+                    case 614:
+                    case 615:
+                    case 616:
+                    case 617:
+                        sector[va].floorz = xsector[nXSector].onFloorZ;
+                        sector[va].ceilingz = xsector[nXSector].onCeilZ;
+                        sprintf(buffer, "SET floorz= %i  ceilingz= %i", sector[va].floorz, sector[va].ceilingz);
+                        scrSetMessage(buffer);
+                        ModifyBeep();
+                        asksave = 1;
+                        break;
+                    }
+                }
+                else
+                {
+                    scrSetMessage("Sector type must first be set in 2D mode.");
+                    Beep();
+                }
+                break;
+            }
+            }
+        }
+        break;
+    }
+    case sc_F9:
+        //asksave = ShowSectorTricks();
+        asksave |= ShowSectorTricks();
+        break;
+    case sc_F11:
+        word_CA89C = !word_CA89C;
+        sprintf(buffer, "Global panning is %s", dword_D9A88[word_CA89C]);
+        scrSetMessage(buffer);
+        ModifyBeep();
+        break;
+    case sc_F12:
+        gBeep = !gBeep;
+        sprintf(buffer, "Beeps are %s", dword_D9A88[gBeep]);
+        scrSetMessage(buffer);
+        ModifyBeep();
+        break;
+    case sc_1:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            wall[searchwall].cstat ^= 0x20;
+            sprintf(buffer, "Wall %i one-way flag is %s", searchwall, dword_D9A88[(wall[searchwall].cstat & 0x20) != 0]);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        case 3:
+            sprite[searchwall].cstat ^= 0x40;
+            if ((sprite[searchwall].cstat & 0x30) == 0x20)
+            {
+                sprite[searchwall].cstat &= ~0x08;
+                if (sprite[searchwall].cstat & 0x40)
+                {
+                    if (posz > sprite[searchwall].z)
+                    {
+                        sprite[searchwall].cstat |= 0x08;
+                    }
+                }
+            }
+            sprintf(buffer, "Sprite %i one-sided flag is %s", searchwall, dword_D9A88[(sprite[searchwall].cstat & 0x40) != 0]);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_2:
+        switch (searchstat)
+        {
+        case 0:
+        case 4:
+            wall[searchwall].cstat ^= 0x02;
+            sprintf(buffer, "Wall %i bottom swap flag is %s", searchwall, dword_D9A88[(wall[searchwall].cstat & 0x02) != 0]);
+            scrSetMessage(buffer);
+            ModifyBeep();
+            break;
+        default:
+            Beep();
+            break;
+        }
+        break;
+    case sc_PrintScreen:
+        screencapture("captxxxx.tga",keystatus[0x2a]|keystatus[0x36]);
+        ModifyBeep();
         break;
     }
     if (key)

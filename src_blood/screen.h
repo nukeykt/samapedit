@@ -46,6 +46,8 @@ void scrResetPalette(void);
 void gSetDacRange(int start, int end, RGB *pPal);
 void scrLoadPLUs(void);
 void scrLoadPalette(void);
+void scrSetMessage(const char *a1);
+void scrDisplayMessage(int a1);
 void scrSetPalette(int palId);
 void scrSetGamma(int nGamma);
 void scrSetupFade(char red, char green, char blue);
