@@ -702,11 +702,11 @@ void tileDrawTileScreen(int a1, int a2, int a3, int a4)
                     {
                         bufplce[0] = v58 + (vbp >> 16) * v60;
                         vbp += v50;
-                        bufplce[0] = v58 + (vbp >> 16) * v60;
+                        bufplce[1] = v58 + (vbp >> 16) * v60;
                         vbp += v50;
-                        bufplce[0] = v58 + (vbp >> 16) * v60;
+                        bufplce[2] = v58 + (vbp >> 16) * v60;
                         vbp += v50;
-                        bufplce[0] = v58 + (vbp >> 16) * v60;
+                        bufplce[3] = v58 + (vbp >> 16) * v60;
                         vbp += v50;
                         vplce[0] = vplce[1] = vplce[2] = vplce[3] = 0;
                         vlineasm4(v48, (void*)v5c);
@@ -740,6 +740,7 @@ void tileDrawTileScreen(int a1, int a2, int a3, int a4)
         int v54 = a2 - a1;
         int v2c = (v54 % v1c) * a3;
         int v40 = (v54 / v1c) * a3;
+        gColor = gStdColor[15];
         Video_HLine(0, v40, v2c, v2c+a3-1);
         Video_HLine(0, v40+a3-1, v2c, v2c+a3-1);
         Video_VLine(0, v2c, v40, v40+a3-1);
@@ -777,7 +778,7 @@ int tilePick(int a1, int a2, int a3)
     while (1)
     {
         handleevents();
-        tileDrawTileScreen(vsi, vbp, nZoom, tileIndexCount);
+        tileDrawTileScreen(vsi, vbp, pickSize[nZoom], tileIndexCount);
 #if 0
         if (vidoption != 1)
         {
