@@ -240,6 +240,7 @@ void scrLoadPalette(void)
     if (!pTrans)
         ThrowError("TRANS.TLU not found");
     transluc = (unsigned char*)gSysRes.Lock(pTrans);
+    fixtransluscence(transluc);
     // paletteloaded |= PALETTE_TRANSLUC;
 
 // #ifdef USE_OPENGL
