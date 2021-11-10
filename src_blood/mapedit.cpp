@@ -256,7 +256,7 @@ CONTROL controlXSector[] = {
 
 void PrintText(int x, int y, short c, short bc, char *pString)
 {
-    printext16(x*8+4, y*8+28, c, bc, pString, 0);
+    printext16(x*8+4, ydim-STATUS2DSIZ+y*8+28, c, bc, pString, 0);
 }
 
 void ControlPrint(CONTROL* control, int a2)
@@ -7171,7 +7171,7 @@ int qloadboard(char* filename, char fromwhere, int* daposx, int* daposy, int* da
     if (qsetmode != 200)
     {
         sprintf(byte_CA8A8, "Map Revisions: %i", gMapRev);
-        printext16(4, 28, 11, 8, byte_CA8A8, 0);
+        printext16(4, ydim-STATUS2DSIZ+28, 11, 8, byte_CA8A8, 0);
     }
     return 0;
 }
