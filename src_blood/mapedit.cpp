@@ -1,4 +1,5 @@
 #include <direct.h>
+#include <stdlib.h>
 #include "compat.h"
 #include "build.h"
 #include "editor.h"
@@ -6294,16 +6295,21 @@ void Sleep(int n)
 
 unsigned char *beep1, *beep2;
 int beeplen1, beeplen2;
-int beepfreq = 32000;
+int beepfreq;
 
 void MakeBeepSounds(void)
 {
+    beepfreq = MixRate;
     // ModifyBeep
     beeplen1 = 2 * beepfreq / 120;
     beep1 = (unsigned char*)malloc(beeplen1);
     for (int i = 0; i < beeplen1; i++)
     {
-        beep1[i] = 128 + mulscale30(127, Sin(i * (6000*2048 / beepfreq)));
+        int amm = mulscale30(127, Sin(i * (6000 * 2048 / beepfreq)));
+        int rest = beeplen1 - i - 1;
+        if (rest < 32)
+            amm = mulscale5(amm, rest);
+        beep1[i] = 128 + amm;
     }
      
     // Beep
@@ -7356,6 +7362,7 @@ void ExtCheckKeys()
             FXDevice = 0;
         }
         sndInit();
+        MakeBeepSounds();
         soundInit = 1;
     }
     gFrameTicks = totalclock - gFrameClock;
@@ -7546,8 +7553,6 @@ int ExtInit()
     // timerRegisterClient(sub_12010, 120);
     // timerInstall();
     dbInit();
-
-    MakeBeepSounds();
 
     visibility = 800;
     kensplayerheight = 0x3700;
