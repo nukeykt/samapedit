@@ -616,7 +616,7 @@ int tileBuildHistogram(int a1)
     }
     qsort(tileIndex, kMaxTiles, sizeof(short), CompareTileFreqs);
     tileIndexCount = 0;
-    while (tileIndex[tileIndexCount] > 0 && tileIndexCount < kMaxTiles)
+    while (tileHist[tileIndex[tileIndexCount]] > 0 && tileIndexCount < kMaxTiles)
     {
         tileIndexCount++;
     }
