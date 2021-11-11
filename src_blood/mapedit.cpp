@@ -6944,9 +6944,9 @@ void sub_10EA0()
             if (stru_CAF10[vbx].at2 >= 0)
                 pSprite->picnum = stru_CAF10[vbx].at2;
             if (stru_CAF10[vbx].at4 >= 0)
-                pSprite->xoffset = stru_CAF10[vbx].at4;
+                pSprite->xrepeat = stru_CAF10[vbx].at4;
             if (stru_CAF10[vbx].at6 >= 0)
-                pSprite->xoffset = stru_CAF10[vbx].at6;
+                pSprite->yrepeat = stru_CAF10[vbx].at6;
 
             if (stru_CAF10[vbx].at8 == 0)
                 pSprite->cstat &= ~0x100;
