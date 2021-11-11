@@ -21,10 +21,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 //-------------------------------------------------------------------------
 #include "build.h"
-#include "compat.h"
+#include "baselayer.h"
+#include "winlayer.h"
+#include "common_game.h"
 #include "music.h"
 #include "fx_man.h"
-#include "common_game.h"
 #include "resource.h"
 #include "sound.h"
 
@@ -345,7 +346,7 @@ void InitSoundDevice(void)
     } else {
         fxdevicetype = FXDevice - 1;
     }
-#ifdef MIXERTYPEWIN
+#ifdef _WIN32
     void *initdata = (void *)win_gethwnd(); // used for DirectSound
 #else
     void *initdata = NULL;

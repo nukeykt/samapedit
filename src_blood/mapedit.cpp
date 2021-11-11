@@ -399,9 +399,18 @@ int ControlKeys(CONTROL* list)
     CONTROL* control = ControlFindTag(list, tag);
     while (true)
     {
+        if (handleevents())
+        {
+            if (quitevent)
+                return 0;
+        }
         ControlPrint(control, 1);
-        unsigned char key;
-        while ((key = keyGetScan()) == 0) { }
+        unsigned char key = keyGetScan();
+        if (key == 0)
+        {
+            showframe();
+            continue;
+        }
         if (control->at1d)
         {
             key = control->at1d(control, key);
@@ -559,7 +568,7 @@ int ControlKeys(CONTROL* list)
 
             }
         }
-
+        nextpage();
     }
 }
 
@@ -7272,6 +7281,24 @@ int dword_DCF10;
 
 void ExtCheckKeys()
 {
+    static int soundInit = 0;
+    if (!soundInit)
+    {
+        buildprintf("Engaging sound subsystem...\n");
+        {
+            FXVolume = 255;
+            MusicVolume = 255;
+            NumVoices = 32;
+            NumChannels = 2;
+            NumBits = 16;
+            MixRate = 44100;
+            ReverseStereo = 0;
+            MusicDevice = 0;
+            FXDevice = 0;
+        }
+        sndInit();
+        soundInit = 1;
+    }
     gFrameTicks = totalclock - gFrameClock;
     gFrameClock += gFrameTicks;
     sndProcess();
@@ -7459,19 +7486,6 @@ int ExtInit()
     // tioPrint("Installing timer");
     // timerRegisterClient(sub_12010, 120);
     // timerInstall();
-    buildprintf("Engaging sound subsystem...\n");
-    {
-        FXVolume = 255;
-        MusicVolume = 255;
-        NumVoices = 32;
-        NumChannels = 2;
-        NumBits = 16;
-        MixRate = 44100;
-        ReverseStereo = 0;
-        MusicDevice = 0;
-        FXDevice = 0;
-    }
-    sndInit();
     dbInit();
 
     visibility = 800;
