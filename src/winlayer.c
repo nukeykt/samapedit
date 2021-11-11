@@ -2408,6 +2408,10 @@ static LRESULT CALLBACK WndProcCallback(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 			}
 			return 0;
 
+		case WM_KILLFOCUS:
+			Bmemset(keystatus, 0, sizeof(keystatus));
+			break;
+
 		case WM_CHAR:
 			if (eatosdinput) {
 				eatosdinput = 0;
