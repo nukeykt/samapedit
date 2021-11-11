@@ -73,7 +73,7 @@ static short *dotp1[MAXYDIM], *dotp2[MAXYDIM];
 static unsigned char tempbuf[MAXWALLS];
 
 int ebpbak, espbak;
-#define SLOPALOOKUPSIZ (MAXXDIM<<1)
+#define SLOPALOOKUPSIZ 16384 //(MAXXDIM<<1)
 intptr_t slopalookup[SLOPALOOKUPSIZ];
 #if USE_POLYMOST && USE_OPENGL
 palette_t palookupfog[MAXPALOOKUPS];
