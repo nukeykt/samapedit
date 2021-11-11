@@ -134,6 +134,7 @@ EDITOREXEOBJS=$(GAME)\common.$o \
 	$(GAME)\gui.$o \
 	$(GAME)\tracker.$o \
 	$(GAME)\replace.$o \
+	$(GAME)\sound.$o \
 	$(GAME)\mapedit.$o \
 	$(GAME)\buildres.$(res) \
 	$(SRC)\$(EDITORLIB) \

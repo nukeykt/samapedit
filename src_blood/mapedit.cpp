@@ -16,6 +16,7 @@
 #include "gameutil.h"
 #include "inifile.h"
 #include "replace.h"
+#include "sound.h"
 
 ///////// globals ///////////////
 
@@ -620,7 +621,6 @@ unsigned char sub_1BFD8(CONTROL* control, unsigned char a2)
 
 unsigned char sub_1BFF4(CONTROL* control, unsigned char a2) // sound
 {
-#if 0
     int i;
     DICTNODE* hSnd;
     switch (a2)
@@ -651,13 +651,12 @@ unsigned char sub_1BFF4(CONTROL* control, unsigned char a2) // sound
         hSnd = gSoundRes.Lookup(control->at21, "SFX");
         if (hSnd != NULL)
         {
-            SFX* pSfx = gSoundRes.Load(hSnd);
+            SFX* pSfx = (SFX*)gSoundRes.Load(hSnd);
             printmessage16(pSfx->rawName);
             sndStartSample(control->at21, FXVolume, 0, 0);
         }
         return 0;
     }
-#endif
     return a2;
 }
 
@@ -7271,18 +7270,6 @@ void ExtAnalyzeSprites(void)
 
 int dword_DCF10;
 
-void sndProcess()
-{
-}
-
-void sndInit()
-{
-}
-
-void sndTerm()
-{
-}
-
 void ExtCheckKeys()
 {
     gFrameTicks = totalclock - gFrameClock;
@@ -7473,6 +7460,17 @@ int ExtInit()
     // timerRegisterClient(sub_12010, 120);
     // timerInstall();
     buildprintf("Engaging sound subsystem...\n");
+    {
+        FXVolume = 255;
+        MusicVolume = 255;
+        NumVoices = 32;
+        NumChannels = 2;
+        NumBits = 16;
+        MixRate = 44100;
+        ReverseStereo = 0;
+        MusicDevice = 0;
+        FXDevice = 0;
+    }
     sndInit();
     dbInit();
 

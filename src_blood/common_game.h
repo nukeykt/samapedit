@@ -409,7 +409,7 @@ extern int gFrameTicks;
 extern int gFrame;
 extern int gFrameRate;
 extern int gGamma;
-extern Resource gSysRes, gSoundRes;
+extern Resource gSysRes;
 
 struct PICANM {
     unsigned int animframes : 5;
