@@ -7444,6 +7444,11 @@ int ExtInit()
     draw2dscreen_replace = qdraw2dscreen;
     LoadFontSymbols();
 
+    buildputs("BUILD engine by Ken Silverman (http://www.advsys.net/ken)\n");
+    buildputs("Additional improvements by Jonathon Fowler (http://www.jonof.id.au)\n");
+    buildputs("and other contributors. See BUILDLIC.TXT for terms.\n");
+    buildputs("Original MAPEDIT version by Peter Freese and Nick Newhard\n");
+    buildputs("MAPEDIT port by Nuke.YKT\n\n");
     
 #if defined(DATADIR)
     {
