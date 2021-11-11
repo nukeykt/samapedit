@@ -395,11 +395,11 @@ void Button::HandleEvent(GEVENT* event)
         {
         case GEVENT_TYPE_MOUSE_1:
             at29 = 1;
-            at0 = GEVENT_TYPE_NONE;
+            event->at0 = GEVENT_TYPE_NONE;
             break;
         case GEVENT_TYPE_MOUSE_8:
             at29 = Inside(event->at6.mouse.at8, event->at6.mouse.atc);
-            at0 = GEVENT_TYPE_NONE;
+            event->at0 = GEVENT_TYPE_NONE;
             break;
         case GEVENT_TYPE_MOUSE_2:
             at29 = 0;
@@ -410,7 +410,7 @@ void Button::HandleEvent(GEVENT* event)
                 if (at24)
                     EndModal(at24);
             }
-            at0 = GEVENT_TYPE_NONE;
+            event->at0 = GEVENT_TYPE_NONE;
             break;
         }
     }
