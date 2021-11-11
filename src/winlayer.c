@@ -2401,9 +2401,9 @@ static LRESULT CALLBACK WndProcCallback(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 					}
 				} else if (OSD_HandleKey(scan, press) != 0) {
 					if (!keystatus[scan] || !press) {
-						SetKey(scan, press);
 						if (keypresscallback) keypresscallback(scan, press);
 					}
+					SetKey(scan, press);
 				}
 			}
 			return 0;

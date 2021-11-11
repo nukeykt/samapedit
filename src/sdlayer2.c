@@ -1444,10 +1444,10 @@ int handleevents(void)
 
 				if (ev.key.type == SDL_KEYDOWN) {
 					if (!keystatus[code]) {
-						SetKey(code, 1);
 						if (keypresscallback)
 							keypresscallback(code, 1);
 					}
+					SetKey(code, 1);
 				} else {
 					SetKey(code, 0);
 					if (keypresscallback)
