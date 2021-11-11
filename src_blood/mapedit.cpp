@@ -218,7 +218,7 @@ CONTROL controlXSector2[] = {
 };
 
 CONTROL controlXSector[] = {
-    { 0, 0, 1, CONTROL_TYPE_4, "Type %4d: %-16.16s", 0, 1023, dword_DAA90, NULL, 0 },
+    { 0, 0, 1, CONTROL_TYPE_4, "Type %4d: %-16.16s", 0, 1023, dword_DBA90, NULL, 0 },
     { 0, 1, 2, CONTROL_TYPE_1, "RX ID: %4d", 0, 1023, NULL, sub_1BE80, 0 },
     { 0, 2, 3, CONTROL_TYPE_1, "TX ID: %4d", 0, 1023, NULL, sub_1BE80, 0 },
     { 0, 3, 4, CONTROL_TYPE_4, "State %1d: %-3.3s", 0, 1, dword_D9A88, NULL, 0 },
