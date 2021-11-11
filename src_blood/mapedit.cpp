@@ -17,6 +17,7 @@
 #include "inifile.h"
 #include "replace.h"
 #include "sound.h"
+#include "fx_man.h"
 
 ///////// globals ///////////////
 
@@ -6291,22 +6292,80 @@ void Sleep(int n)
     while (totalclock < t) {};
 }
 
+unsigned char *beep1, *beep2;
+int beeplen1, beeplen2;
+int beepfreq = 32000;
+
+void MakeBeepSounds(void)
+{
+    // ModifyBeep
+    beeplen1 = 2 * beepfreq / 120;
+    beep1 = (unsigned char*)malloc(beeplen1);
+    for (int i = 0; i < beeplen1; i++)
+    {
+        beep1[i] = 128 + mulscale30(127, Sin(i * (6000*2048 / beepfreq)));
+    }
+     
+    // Beep
+    beeplen2 = 8 * beepfreq / 120;
+    beep2 = (unsigned char*)malloc(beeplen2);
+    for (int i = 0; i < beeplen2 / 2; i++)
+    {
+        if (((i * 2000) / beepfreq) % 2 == 0)
+            beep2[i] = 255;
+        else
+            beep2[i] = 0;
+    }
+    for (int i = 0; i < beeplen2 / 2; i++)
+    {
+        if (((i * 1600) / beepfreq) % 2 == 0)
+            beep2[i+beeplen2/2] = 255;
+        else
+            beep2[i+beeplen2/2] = 0;
+    }
+}
+
+int beepHandle = -1;
+
+void PlayBeepSound(int type)
+{
+    int volume = 64;
+    if (beepHandle > 0)
+        FX_StopSound(beepHandle);
+    unsigned char *data;
+    int len;
+    if (type)
+    {
+        data = beep2;
+        len = beeplen2;
+    }
+    else
+    {
+        data = beep1;
+        len = beeplen1;
+    }
+    beepHandle = FX_PlayRaw((char*)data, len, beepfreq, 0, volume, volume, volume, 128, (unsigned int)&beepHandle);
+}
+
 void ModifyBeep(void)
 {
-#if 0
     if (gBeep)
     {
+#if 0
         sound(6000);
         Sleep(2);
         nosound();
         Sleep(2);
-    }
 #endif
+        PlayBeepSound(0);
+    }
+    PlayBeepSound(0);
     asksave = 1;
 }
 
 void Beep(void)
 {
+    PlayBeepSound(1);
 #if 0
     sound(1000);
     Sleep(4);
@@ -7487,6 +7546,8 @@ int ExtInit()
     // timerRegisterClient(sub_12010, 120);
     // timerInstall();
     dbInit();
+
+    MakeBeepSounds();
 
     visibility = 800;
     kensplayerheight = 0x3700;
