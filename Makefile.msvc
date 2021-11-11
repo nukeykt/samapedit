@@ -11,7 +11,7 @@ USE_POLYMOST=0
 USE_OPENGL=0
 USE_ASM=1
 
-RELEASE=0
+RELEASE=1
 
 # Create Makefile.msvcuser yourself to provide your own overrides
 # for configurable values
@@ -208,7 +208,7 @@ ENGINEOBJS=$(ENGINEOBJS) $(SRC)\version.$o
 # TARGETS
 UTILS=kextract$(EXESUFFIX) kgroup$(EXESUFFIX) transpal$(EXESUFFIX) wad2map$(EXESUFFIX) wad2map$(EXESUFFIX)
 
-all: enginelib editorlib $(GAMEDATA)\mapedit$(EXESUFFIX) ;
+all: enginelib editorlib $(GAMEDATA)\samapedit$(EXESUFFIX) ;
 utils: $(UTILS) ;
 
 enginelib: $(SRC)\$(ENGINELIB) ;
@@ -223,7 +223,7 @@ $(SRC)\$(EDITORLIB): $(EDITOROBJS)
 $(GAMEDATA)\game$(EXESUFFIX): $(GAMEEXEOBJS)
 	$(LINK) /OUT:$@ /SUBSYSTEM:WINDOWS "/LIBPATH:$(DXROOT)\lib" $(LINKFLAGS) /MAP $** $(LIBS) msvcrt.lib
 
-$(GAMEDATA)\mapedit$(EXESUFFIX): $(EDITOREXEOBJS) $(AUDIOLIBROOT)\$(JFAUDIOLIB)
+$(GAMEDATA)\samapedit$(EXESUFFIX): $(EDITOREXEOBJS) $(AUDIOLIBROOT)\$(JFAUDIOLIB)
 	$(LINK) /OUT:$@ /SUBSYSTEM:WINDOWS "/LIBPATH:$(DXROOT)\lib" $(LINKFLAGS) /MAP $** $(LIBS) $(JFAUDIOLIB_LINKFLAGS) msvcrt.lib
 
 # the tools
