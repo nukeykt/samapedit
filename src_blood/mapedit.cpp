@@ -5648,8 +5648,8 @@ void Check3DKeys(void)
             }
             else
             {
-                wall[searchwall].xpanning = changechar(wall[searchwall].xpanning, vd, vbl, 1);
-                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                wall[searchwall].xrepeat = changechar(wall[searchwall].xrepeat, vd, vbl, 1);
+                sprintf(buffer, "wall %i xrepeat: %i yrepeat: %i", searchwall, wall[searchwall].xrepeat, wall[searchwall].yrepeat);
                 scrSetMessage(buffer);
             }
             break;
@@ -5706,8 +5706,8 @@ void Check3DKeys(void)
             }
             else
             {
-                wall[searchwall].ypanning = changechar(wall[searchwall].ypanning, vd, vbl, 1);
-                sprintf(buffer, "wall %i xpanning: %i ypanning: %i", searchwall, wall[searchwall].xpanning, wall[searchwall].ypanning);
+                wall[searchwall].yrepeat = changechar(wall[searchwall].yrepeat, vd, vbl, 1);
+                sprintf(buffer, "wall %i xrepeat: %i yrepeat: %i", searchwall, wall[searchwall].xrepeat, wall[searchwall].yrepeat);
                 scrSetMessage(buffer);
             }
             break;
