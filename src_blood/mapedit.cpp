@@ -7510,7 +7510,7 @@ int ExtInit()
     }
 
     buildprintf("Initializing heap and resource system\n");
-    Resource::heap = new QHeap(128 * 1024 * 1024);
+    Resource::heap = new QHeap(32 * 1024 * 1024);
     buildprintf("Initializing resource archive\n");
     gSysRes.Init("BLOOD.RFF");
     gGuiRes.Init("GUI.RFF");
