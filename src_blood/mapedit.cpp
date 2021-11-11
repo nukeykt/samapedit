@@ -2293,21 +2293,8 @@ void SetFirstWall(int nSector, int nWall)
 
 void sub_22350()
 {
-    short nHitSect = -1;
-    short nHitWall = -1;
-    short nHitSprite = -1;
-    int hx, hy, hz;
-    int x = 0x4000;
-    int y = divscale(searchx-xdim/2, xdim/2, 14);
-    RotateVector(&x, &y, ang);
-    hitscan(posx, posy, posz, cursectnum, x, y, (scale(searchy, 200, ydim)-horiz)*2000, &nHitSect, &nHitWall, &nHitSprite, &hx, &hy, &hz, 0);
-    if (nHitWall == searchwall)
-        searchsector = wall[searchwall].nextsector;
-    else if (searchwall == wall[nHitSect].nextwall)
-        searchsector = wall[nHitWall].nextsector;
-    else
-        return;
-    if (getflorzofslope(searchsector, hx, hy) < hz)
+    searchsector = wall[searchwall2].nextsector;
+    if (searchwallcf)
         searchstat = 2;
     else
         searchstat = 1;

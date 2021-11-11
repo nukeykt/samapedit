@@ -544,6 +544,7 @@ short editstatus = 0;
 short searchit;
 int searchx = -1, searchy;                          //search input
 short searchsector, searchwall, searchstat;     //search output
+short searchwall2, searchwallcf;
 double msens = 1.0;
 
 static char artfilename[20];
@@ -2477,7 +2478,8 @@ static void drawalls(int bunch)
 					if ((searchit == 2) && (searchx >= x1) && (searchx <= x2))
 						if (searchy <= dwall[searchx]) //wall
 						{
-							searchsector = sectnum; searchwall = wallnum;
+							searchsector = sectnum; searchwall2 = searchwall = wallnum;
+							searchwallcf = 0;
 							searchstat = 0; searchit = 1;
 						}
 
@@ -2566,8 +2568,9 @@ static void drawalls(int bunch)
 					if ((searchit == 2) && (searchx >= x1) && (searchx <= x2))
 						if (searchy >= uwall[searchx]) //wall
 						{
-							searchsector = sectnum; searchwall = wallnum;
+							searchsector = sectnum; searchwall2 = searchwall = wallnum;
 							if ((wal->cstat&2) > 0) searchwall = wal->nextwall;
+							searchwallcf = 1;
 							searchstat = 0; searchit = 1;
 						}
 
@@ -2717,7 +2720,7 @@ static void drawalls(int bunch)
 
 			if ((searchit == 2) && (searchx >= x1) && (searchx <= x2))
 			{
-				searchit = 1; searchsector = sectnum; searchwall = wallnum;
+				searchit = 1; searchsector = sectnum; searchwall2 = searchwall = wallnum;
 				if (nextsectnum < 0) searchstat = 0; else searchstat = 4;
 			}
 		}
