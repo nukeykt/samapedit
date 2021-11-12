@@ -3011,7 +3011,7 @@ int InsertObject(int a1, int a2, int a3, int a4, int a5, int a6)
     switch (window.at25)
     {
     case 8:
-        return InsertEnemy(a1, a2, a3, a4, a5, a6);
+        return InsertEnemy(a1, a2, a3, a4, a5, (a6+1024)&2047);
     case 9:
         return InsertWeapon(a1, a2, a3, a4, a5, a6);
     case 10:
@@ -7299,8 +7299,8 @@ void ExtAnalyzeSprites(void)
             break;
         case 1:
         {
-            int dx = pTSprite->x - posx;
-            int dy = pTSprite->y - posy;
+            int dx = posx - pTSprite->x;
+            int dy = posy - pTSprite->y;
             RotateVector(&dx, &dy,-pTSprite->ang+128);
             vsi = GetOctant(dx, dy);
             if (vsi <= 4)
