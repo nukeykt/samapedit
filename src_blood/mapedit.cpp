@@ -6352,7 +6352,6 @@ void ModifyBeep(void)
 #endif
         PlayBeepSound(0);
     }
-    PlayBeepSound(0);
     asksave = 1;
 }
 

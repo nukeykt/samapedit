@@ -11,7 +11,7 @@ USE_POLYMOST=0
 USE_OPENGL=0
 USE_ASM=1
 
-RELEASE=1
+RELEASE=0
 
 # Create Makefile.msvcuser yourself to provide your own overrides
 # for configurable values
