@@ -1501,7 +1501,7 @@ void qdraw2dscreen(int posxe, int posye, short ange, int zoome, short gride)
                         case 0x20:
                         {
                             int dx, dy;
-                            DrawFaceSprite(xp, yp, color);
+                            DrawFloorSprite(xp, yp, color);
                             dx = mulscale30(zoome/256, Cos(sprite[j].ang));
                             dy = mulscale30(zoome/256, Sin(sprite[j].ang));
                             DrawLine(xp, yp, xp+dx, yp+dy, color, v10);
