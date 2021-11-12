@@ -1919,7 +1919,7 @@ void AlignWalls(int nWall0, int z0, int nWall1, int z1, int nTile)
         n++;
 
     wall[nWall1].yrepeat = wall[nWall0].yrepeat;
-    wall[nWall1].ypanning = wall[nWall0].ypanning + ((z1-z0)*wall[nWall0].yrepeat) >> (n+3);
+    wall[nWall1].ypanning = wall[nWall0].ypanning + (((z1-z0)*wall[nWall0].yrepeat) >> (n+3));
 }
 
 char visited[kMaxWalls];
@@ -1985,7 +1985,7 @@ void AutoAlignWalls(int nWall0, int ply)
                 }
                 if ((wall[nWall1].cstat & 0x02) && wall[nNextWall].picnum == nTile)
                     AlignWalls(nWall0, z0, nNextWall, z1, nTile);
-                AutoAlignWalls(nWall0, ply + 1);
+                AutoAlignWalls(nWall1, ply + 1);
             }
         }
 
