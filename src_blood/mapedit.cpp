@@ -3796,7 +3796,7 @@ void Check3DKeys(void)
         break;
     }
     case sc_Enter:
-        if (somethingintab == 0)
+        if (somethingintab == 255)
         {
             Beep();
             break;
