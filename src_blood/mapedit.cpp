@@ -612,7 +612,7 @@ unsigned char sub_1BE80(CONTROL* control, unsigned char a2) // Next tx/rx id
             if (!t[i])
                 break;
         }
-        control->at21 = 0;
+        control->at21 = i;
         return 0;
     }
     return a2;
