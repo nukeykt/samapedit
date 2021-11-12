@@ -7144,7 +7144,7 @@ const char* ExtGetSpriteCaption(short nSprite)
 
 void ExtShowSectorData(short nSector)
 {
-    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         EditSectorData(nSector);
     else
         ShowSectorData(nSector);
@@ -7152,7 +7152,7 @@ void ExtShowSectorData(short nSector)
 
 void ExtShowWallData(short nWall)
 {
-    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         EditWallData(nWall);
     else
         ShowWallData(nWall);
@@ -7160,9 +7160,7 @@ void ExtShowWallData(short nWall)
 
 void ExtShowSpriteData(short nSprite)
 {
-    if (keystatus[sc_LeftControl] | keystatus[sc_RightControl])
-        sub_1159C(nSprite);
-    else if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         EditSpriteData(nSprite);
     else
         ShowSpriteData(nSprite);
@@ -7170,7 +7168,7 @@ void ExtShowSpriteData(short nSprite)
 
 void ExtEditSectorData(short nSector)
 {
-    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         gXTracker.TrackSector(nSector, 0);
     else
         gXTracker.TrackSector(nSector, 1);
@@ -7178,7 +7176,7 @@ void ExtEditSectorData(short nSector)
 
 void ExtEditWallData(short nWall)
 {
-    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         gXTracker.TrackWall(nWall, 0);
     else
         gXTracker.TrackWall(nWall, 1);
@@ -7186,7 +7184,7 @@ void ExtEditWallData(short nWall)
 
 void ExtEditSpriteData(short nSprite)
 {
-    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt])
+    if (keystatus[sc_LeftAlt] | keystatus[sc_RightAlt] | keystatus[sc_LeftControl] | keystatus[sc_RightControl])
         gXTracker.TrackSprite(nSprite, 0);
     else
         gXTracker.TrackSprite(nSprite, 1);
