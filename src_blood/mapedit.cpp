@@ -1378,12 +1378,11 @@ void qdraw2dscreen(int posxe, int posye, short ange, int zoome, short gride)
     }
     if (zoome >= 256)
     {
-        for (int i = 0; i < numwalls; i++)
+        for (int i = 0; i < numsectors; i++)
         {
             int j = headspritesect[i];
             while (j != -1)
             {
-                j = nextspritesect[j];
                 int xp = halfxdim16+mulscale(sprite[j].x - posxe, zoome, 14);
                 int yp = midydim16+mulscale(sprite[j].y - posye, zoome, 14);
                 int dx, dy;
@@ -1511,6 +1510,7 @@ void qdraw2dscreen(int posxe, int posye, short ange, int zoome, short gride)
                         }
                     }
                 }
+                j = nextspritesect[j];
             }
         }
         gXTracker.Draw(posxe, posye, zoome);
