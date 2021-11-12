@@ -4401,7 +4401,7 @@ void Check3DKeys(void)
         }
         else if (keystatus[sc_D])
         {
-            gVisibility = ClipHigh(gVisibility - 0x10, 0x80);
+            gVisibility = ClipLow(gVisibility - 0x10, 0x80);
             sprintf(buffer, "Depth cueing level %i", gVisibility);
             scrSetMessage(buffer);
             ModifyBeep();
