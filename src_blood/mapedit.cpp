@@ -3377,8 +3377,7 @@ void Check3DKeys(void)
         {
             if (ctrl)
             {
-                if (horiz > 0)
-                    horiz -= 4;
+                horiz = ClipLow(horiz - 2*gFrameTicks, 0);
             }
             else
             {
@@ -3391,8 +3390,7 @@ void Check3DKeys(void)
         {
             if (ctrl)
             {
-                if (horiz < 200)
-                    horiz += 4;
+                horiz = ClipHigh(horiz + 2*gFrameTicks, 200);
             }
             else
             {
@@ -3404,10 +3402,10 @@ void Check3DKeys(void)
         if (z != posz)
         {
             if (z > posz)
-                dword_13ADE4 += 32;
+                dword_13ADE4 += 32 / 2 * gFrameTicks;
             if (z < posz)
                 dword_13ADE4 = (z-posz)>>3;
-            posz += dword_13ADE4;
+            posz += dword_13ADE4 / 2 * gFrameTicks;
             if (florz - 0x400 < posz)
             {
                 posz = florz - 0x400;
@@ -3427,8 +3425,7 @@ void Check3DKeys(void)
         {
             if (keystatus[sc_LeftControl])
             {
-                if (horiz > 0)
-                    horiz -= 4;
+                horiz = ClipLow(horiz - 2*gFrameTicks, 0);
             }
             else if (zmode != 1)
             {
@@ -3436,7 +3433,7 @@ void Check3DKeys(void)
             }
             else
             {
-                zlock += 0x400;
+                zlock += 0x400 / 2 * gFrameTicks;
                 keystatus[sc_A] = 0;
             }
         }
@@ -3444,8 +3441,7 @@ void Check3DKeys(void)
         {
             if (keystatus[sc_LeftControl])
             {
-                if (horiz < 200)
-                    horiz += 4;
+                horiz = ClipHigh(horiz + 2*gFrameTicks, 200);
             }
             else if (zmode != 1)
             {
@@ -3453,7 +3449,7 @@ void Check3DKeys(void)
             }
             else if (zlock > 0)
             {
-                zlock -= 0x400;
+                zlock -= 0x400 / 2 * gFrameTicks;
                 keystatus[sc_Z] = 0;
             }
         }
@@ -3471,10 +3467,10 @@ void Check3DKeys(void)
         if (z != posz)
         {
             if (z > posz)
-                dword_13ADE4 += 32;
+                dword_13ADE4 += 32 / 2 * gFrameTicks;
             if (z < posz)
-                dword_13ADE4 -= 32;
-            posz += dword_13ADE4;
+                dword_13ADE4 -= 32 / 2 * gFrameTicks;
+            posz += dword_13ADE4 / 2 * gFrameTicks;
             if (florz - 0x400 < posz)
             {
                 posz = florz - 0x400;
