@@ -2087,7 +2087,7 @@ void CalcLightBomb(int x, int y, int z, short nSector, int dx, int dy, int dz, i
                     hy += dy >> 12;
                     hz += dz >> 12;
                     a8 -= mulscale16(a8, gLightBombAttenuation);
-                    CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+                    CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9+1, a10);
                 }
             }
         }
@@ -2126,7 +2126,7 @@ void CalcLightBomb(int x, int y, int z, short nSector, int dx, int dy, int dz, i
                 hx += dx >> 12;
                 hy += dy >> 12;
                 hz += dz >> 12;
-                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9+1, a10);
             }
         }
     }
@@ -2160,7 +2160,7 @@ void CalcLightBomb(int x, int y, int z, short nSector, int dx, int dy, int dz, i
                 hx += dx >> 12;
                 hy += dy >> 12;
                 hz += dz >> 12;
-                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9, a10);
+                CalcLightBomb(hx, hy, hz, nHitSect, dx, dy, dz, a8, a9+1, a10);
             }
         }
     }
@@ -2193,8 +2193,8 @@ void ResetLightBomb()
         FloorShadeFrac[i] = 0;
         CeilShadeFrac[i] = 0;
         dword_149DE8[i] = CalcSectorArea(pSector);
-        walltype* pWall = wall;
-        for (int j = pSector->wallptr; j < pSector->wallptr+pSector->wallnum; j++)
+        walltype* pWall = &wall[pSector->wallptr];
+        for (int j = pSector->wallptr; j < pSector->wallptr+pSector->wallnum; j++, pWall++)
         {
             WallShadeFrac[j] = 0;
             
