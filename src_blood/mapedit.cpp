@@ -3113,13 +3113,13 @@ unsigned char ShowOptions(void)
 void sub_258B0(int nSector, int a2)
 {
     dassert(nSector >= 0 && nSector < kMaxSectors);
-    visited[a2] = 1;
-    for (int i = 0; i < sector[i].wallnum; i++)
+    visited[nSector] = 1;
+    for (int i = 0; i < sector[nSector].wallnum; i++)
     {
-        int nNextSector = wall[sector[i].wallptr + i].nextsector;
+        int nNextSector = wall[sector[nSector].wallptr + i].nextsector;
         if (nNextSector != -1 && IsSectorHighlight(nNextSector) && !visited[nNextSector])
         {
-            int nXSector = sector[i].extra;
+            int nXSector = sector[nSector].extra;
             if (nXSector > 0)
             {
                 dassert(nXSector < kMaxXSectors);
@@ -3134,13 +3134,13 @@ void sub_258B0(int nSector, int a2)
 void sub_259F0(int nSector, int a2)
 {
     dassert(nSector >= 0 && nSector < kMaxSectors);
-    visited[a2] = 1;
-    for (int i = 0; i < sector[i].wallnum; i++)
+    visited[nSector] = 1;
+    for (int i = 0; i < sector[nSector].wallnum; i++)
     {
-        int nNextSector = wall[sector[i].wallptr + i].nextsector;
+        int nNextSector = wall[sector[nSector].wallptr + i].nextsector;
         if (nNextSector != -1 && IsSectorHighlight(nNextSector) && !visited[nNextSector])
         {
-            int nXSector = sector[i].extra;
+            int nXSector = sector[nSector].extra;
             if (nXSector > 0)
             {
                 dassert(nXSector < kMaxXSectors);
