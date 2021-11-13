@@ -1710,7 +1710,8 @@ void CheckKeys2D(void)
             wall[nWall2].overpicnum = wall[nWall].overpicnum;
             wall[nWall].cstat &= ~0x20;
             wall[nWall2].cstat &= ~0x20;
-            sprintf(gTempBuf, "wall[%i] %s masked", searchwall, (wall[searchwall].cstat & 0x10) ? "is" : "not");
+            //sprintf(gTempBuf, "wall[%i] %s masked", searchwall, (wall[searchwall].cstat & 0x10) ? "is" : "not");
+            sprintf(gTempBuf, "wall[%i] %s masked", linehighlight, (wall[linehighlight].cstat & 0x10) ? "is" : "not");
             printmessage16(gTempBuf);
             ModifyBeep();
         }
