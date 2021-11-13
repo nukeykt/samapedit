@@ -2003,12 +2003,12 @@ void sub_216F8(int nSector, int a2)
     visited[nSector] = 1;
     for (int i = 0; i < sector[nSector].wallnum; i++)
     {
-        int nNextSector = wall[sector[nSector].wallnum+i].nextsector;
+        int nNextSector = wall[sector[nSector].wallptr+i].nextsector;
         if (nNextSector == -1)
             continue;
-        if (IsSectorHighlight(nNextSector) && !visited[nSector])
+        if (IsSectorHighlight(nNextSector) && !visited[nNextSector])
         {
-            SetSectorFloorZ(nNextSector, sector[nSector].floorz - a2);
+            SetSectorFloorZ(nNextSector, sector[nSector].floorz - (a2<<8));
             sub_216F8(nNextSector, a2);
         }
     }
@@ -2020,12 +2020,12 @@ void sub_21798(int nSector, int a2)
     visited[nSector] = 1;
     for (int i = 0; i < sector[nSector].wallnum; i++)
     {
-        int nNextSector = wall[sector[nSector].wallnum+i].nextsector;
+        int nNextSector = wall[sector[nSector].wallptr+i].nextsector;
         if (nNextSector == -1)
             continue;
-        if (IsSectorHighlight(nNextSector) && !visited[nSector])
+        if (IsSectorHighlight(nNextSector) && !visited[nNextSector])
         {
-            SetSectorCeilZ(nNextSector, sector[nSector].ceilingz - a2);
+            SetSectorCeilZ(nNextSector, sector[nSector].ceilingz - (a2<<8));
             sub_21798(nNextSector, a2);
         }
     }
