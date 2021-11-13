@@ -5778,7 +5778,7 @@ void Check3DKeys(void)
     case sc_F3:
     {
         int va = searchsector;
-        if (alt)
+        if (alt || ctrl)
         {
             switch (searchstat)
             {
@@ -5854,7 +5854,7 @@ void Check3DKeys(void)
     case sc_F4:
     {
         int va = searchsector;
-        if (alt)
+        if (alt || ctrl)
         {
             switch (searchstat)
             {
