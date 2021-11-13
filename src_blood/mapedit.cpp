@@ -1619,7 +1619,7 @@ void CheckKeys2D(void)
             }
             else
             {
-                short nDetail = getnumber16("Sprite detail Level #: ", pSprite->detail, 5, 0);
+                short nDetail = getnumber16("Sprite detail Level #: ", pSprite->filler, 5, 0);
                 clearmidstatbar16();
                 if (nDetail >= 0 && nDetail <= 4)
                 {
