@@ -1602,7 +1602,7 @@ void CheckKeys2D(void)
             spritetype* pSprite = &sprite[nSprite];
             if (alt)
             {
-                short nClipDist = getnumber16("Sprite clipdist #: ", 0, 256, 0);
+                short nClipDist = getnumber16("Sprite clipdist #: ", pSprite->clipdist, 256, 0);
                 clearmidstatbar16();
                 if (nClipDist >= 0 && nClipDist < 256)
                 {
@@ -1619,7 +1619,7 @@ void CheckKeys2D(void)
             }
             else
             {
-                short nDetail = getnumber16("Sprite detail Level #: ", 0, 5, 0);
+                short nDetail = getnumber16("Sprite detail Level #: ", pSprite->detail, 5, 0);
                 clearmidstatbar16();
                 if (nDetail >= 0 && nDetail <= 4)
                 {
