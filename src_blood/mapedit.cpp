@@ -2267,8 +2267,8 @@ void SetFirstWall(int nSector, int nWall)
         if (j == k)
             twall = wall[k];
 
-        int t = n+j;
-        while (t >= start - length)
+        int t = n+k;
+        while (t >= start + length)
             t -= length;
         if (t == j)
         {
