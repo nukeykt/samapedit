@@ -3310,7 +3310,7 @@ void OperateSectors(void (*a1)(int, int), int a2)
 {
     if (IsSectorHighlight(searchsector))
     {
-        for (int i = 0; i < highlightcnt; i++)
+        for (short i = 0; i < highlightsectorcnt; i++)
         {
             a1(highlightsector[i], a2);
         }
