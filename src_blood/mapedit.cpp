@@ -1651,7 +1651,7 @@ void CheckKeys2D(void)
     case sc_K:
         if ((pointhighlight & 0xc000) == 0x4000)
         {
-            short nMotion = sprite[pointhighlight & 0x3fff].cstat & 0x6000;
+            unsigned short nMotion = sprite[pointhighlight & 0x3fff].cstat & 0x6000;
             switch (nMotion)
             {
             case 0:
@@ -1670,7 +1670,7 @@ void CheckKeys2D(void)
         }
         else if (linehighlight >= 0)
         {
-            short nMotion = wall[linehighlight].cstat & 0xc000;
+            unsigned short nMotion = wall[linehighlight].cstat & 0xc000;
             switch (nMotion)
             {
             case 0:
