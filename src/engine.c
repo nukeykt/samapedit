@@ -3423,6 +3423,14 @@ static void drawsprite(int snum)
 				searchstat = 3; searchit = 1;
 			}
 
+		for (i = xb1[MAXWALLSB-1]; i <= xb2[MAXWALLSB-1]; i++)
+		{
+			if (lwall[i] < 0)
+				lwall[i] = 0;
+			if (lwall[i] >= xspan)
+				lwall[i] = xspan-1;
+		}
+
 		if ((cstat&2) == 0) {
 			maskwallscan(xb1[MAXWALLSB-1],xb2[MAXWALLSB-1],uwall,dwall,swall,lwall);
 		} else {
