@@ -16,7 +16,7 @@ struct GEVENT_MOUSE
 struct GEVENT_KEYBOARD
 {
     char at0; // ascii
-    char at1; // scan
+    unsigned char at1; // scan
     union {
         int number;
         struct {
