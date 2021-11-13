@@ -7372,7 +7372,15 @@ void ExtCheckKeys()
         printext256(xdim-16, 0, gStdColor[15], -1, byte_CA8A8, 1);
         scrDisplayMessage(gStdColor[15]);
         if (word_CA89C)
-            DoSectorPanning();
+        {
+            static int counter = 0;
+            counter += gFrameTicks;
+            if (counter >= 4)
+            {
+                DoSectorPanning();
+                counter &= 3;
+            }
+        }
     }
     else
     {
