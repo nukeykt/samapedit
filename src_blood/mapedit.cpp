@@ -3434,7 +3434,7 @@ void Check3DKeys(void)
             }
             else
             {
-                zlock += 0x400 / 2 * gFrameTicks;
+                zlock += 0x400;
                 keystatus[sc_A] = 0;
             }
         }
@@ -3450,7 +3450,7 @@ void Check3DKeys(void)
             }
             else if (zlock > 0)
             {
-                zlock -= 0x400 / 2 * gFrameTicks;
+                zlock -= 0x400;
                 keystatus[sc_Z] = 0;
             }
         }
