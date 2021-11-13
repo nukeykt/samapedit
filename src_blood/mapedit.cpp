@@ -7461,7 +7461,7 @@ int ExtInit()
 
         // the global support files directory
         if (supportdir) {
-            Bsnprintf(dirpath, sizeof(dirpath), "%s/KenBuild", supportdir);
+            Bsnprintf(dirpath, sizeof(dirpath), "%s/SAMapEdit", supportdir);
             addsearchpath(dirpath);
             free(supportdir);
         }
@@ -7483,9 +7483,9 @@ int ExtInit()
         if ((supportdir = Bgetsupportdir(0))) {
             Bsnprintf(dirpath, sizeof(dirpath), "%s/"
 #if defined(_WIN32) || defined(__APPLE__)
-                      "KenBuild"
+                      "SAMapEdit"
 #else
-                      ".kenbuild"
+                      ".samapedit"
 #endif
                       , supportdir);
             asperr = addsearchpath(dirpath);
@@ -7579,7 +7579,7 @@ void ExtUnInit()
     scrUnInit(false);
 }
 
-extern "C" char* defsfilename = "kenbuild.def";
+extern "C" char* defsfilename = "blood.def";
 extern "C" int nextvoxid = 0;
 
 void faketimerhandler(void)
