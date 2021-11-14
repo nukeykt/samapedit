@@ -3439,6 +3439,7 @@ static void drawsprite(int snum)
 	}
 	else if ((cstat&48) == 32)
 	{
+		int64_t gpx, gpy;
 		if ((cstat&64) != 0)
 			if ((globalposz > tspr->z) == ((cstat&8)==0))
 				return;
@@ -3495,8 +3496,8 @@ static void drawsprite(int snum)
 		globaly2 = divscale18(day,bot);
 
 			//Calculate globals for hline texture mapping function
-		globalxpanning = (rxi[z]<<12);
-		globalypanning = (rzi[z]<<12);
+		gpx = (((int64_t)rxi[z])<<12);
+		gpy = (((int64_t)rzi[z])<<12);
 		globalzd = (ryi[z]<<12);
 
 		rzi[0] = mulscale16(rzi[0],viewingrange);
@@ -3731,9 +3732,8 @@ static void drawsprite(int snum)
 			globalx2 = mulscale(globalx2,xspan,x);
 		}
 
-		dax = globalxpanning; day = globalypanning;
-		globalxpanning = -dmulscale6(globalx1,day,globalx2,dax);
-		globalypanning = -dmulscale6(globaly1,day,globaly2,dax);
+		globalxpanning = -(int)((globalx1*gpy+globalx2*gpx)>>6);
+		globalypanning = -(int)((globaly1*gpy+globaly2*gpx)>>6);
 
 		globalx2 = mulscale16(globalx2,viewingrange);
 		globaly2 = mulscale16(globaly2,viewingrange);
