@@ -855,6 +855,7 @@ int tilePick(int a1, int a2, int a3)
         case 0x2f:
             if (a3 != -2 && tileIndexCount < kMaxTiles)
             {
+                vbp = tileIndex[vbp];
                 tileIndexCount = kMaxTiles;
                 for (int i = 0; i < kMaxTiles; i++)
                 {
