@@ -7320,6 +7320,11 @@ void ExtAnalyzeSprites(void)
         }
         for (; vsi > 0; vsi--)
             pTSprite->picnum += 1 + _picanm[pTSprite->picnum].animframes;
+
+        if ((pTSprite->cstat & 48) == 48)
+        {
+            pTSprite->cstat &= ~16;
+        }
     }
 }
 
